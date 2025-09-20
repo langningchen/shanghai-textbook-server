@@ -34,8 +34,8 @@ export async function GET(
 
     const octokit = new Octokit({ auth: token });
     let pdfContent: Buffer | null = null;
-    let filename = `${bookId}.pdf.${part}`;
-    let path = `books/${bookId}.pdf.${part}`;
+    const filename = `${bookId}.pdf.${part}`;
+    const path = `books/${bookId}.pdf.${part}`;
     try {
       const { data } = await octokit.rest.repos.getContent({
         owner: 'langningchen',
@@ -54,7 +54,7 @@ export async function GET(
       } else {
         throw new Error('Unable to get PDF part content');
       }
-    } catch (err) {
+    } catch {
       return NextResponse.json(
         { error: 'PDF part not found' },
         { status: 404 }

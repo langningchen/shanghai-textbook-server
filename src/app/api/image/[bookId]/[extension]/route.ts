@@ -63,7 +63,7 @@ export async function GET(
       } else {
         throw new Error('Unable to get image content');
       }
-    } catch (err) {
+    } catch {
       return NextResponse.json(
         { error: 'Image not found' },
         { status: 404 }
