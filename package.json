@@ -1,0 +1,36 @@
+{
+	"name": "shanghai-textbook-server",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev --turbopack",
+		"build": "next build",
+		"start": "next start",
+		"lint": "next lint",
+		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
+	},
+	"dependencies": {
+		"@emotion/react": "^11.14.0",
+		"@emotion/styled": "^11.14.1",
+		"@mui/icons-material": "^7.3.2",
+		"@mui/material": "^7.3.2",
+		"@octokit/rest": "^22.0.0",
+		"@opennextjs/cloudflare": "^1.8.3",
+		"next": "15.4.6",
+		"react": "19.1.0",
+		"react-dom": "19.1.0",
+		"react-intersection-observer": "^9.16.0"
+	},
+	"devDependencies": {
+		"@eslint/eslintrc": "^3",
+		"@types/node": "^20",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"eslint": "^9",
+		"eslint-config-next": "15.4.6",
+		"typescript": "^5",
+		"wrangler": "^4.38.0"
+	}
+}

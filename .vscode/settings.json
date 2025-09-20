@@ -1,0 +1,6 @@
+{
+	"files.associations": {
+		"wrangler.json": "jsonc"
+	},
+	"licenser.license": "AGPLv3"
+}
