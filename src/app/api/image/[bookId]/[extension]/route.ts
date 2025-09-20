@@ -14,7 +14,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { NextRequest, NextResponse } from 'next/server';
-import sharp from 'sharp';
 
 export async function GET(
   request: NextRequest,
@@ -23,7 +22,6 @@ export async function GET(
   try {
     const { bookId, extension } = await params;
     
-    // Validate extension
     if (!['jpg', 'png'].includes(extension)) {
       return NextResponse.json(
         { error: 'Invalid image format' },
@@ -42,15 +40,14 @@ export async function GET(
       );
     }
 
-    const imageBuffer = await response.arrayBuffer();
-    const inputBuffer = Buffer.from(new Uint8Array(imageBuffer));
-    const outputBuffer = await sharp(inputBuffer)
-      .jpeg({ progressive: true })
-      .toBuffer();
-    const body = new Uint8Array(outputBuffer);
-    return new NextResponse(body, {
+    const imageBlob = await response.blob();
+    const imageArrayBuffer = await imageBlob.arrayBuffer();
+    const imageBuffer = Buffer.from(imageArrayBuffer);
+
+    return new NextResponse(imageBuffer, {
+      status: 200,
       headers: {
-        'Content-Type': 'image/jpeg',
+        'Content-Type': imageBlob.type,
         'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
       },
     });
