@@ -22,7 +22,7 @@ export async function GET(
   try {
     const { bookId, part } = await params;
     
-    const pdfUrl = `https://raw.githubusercontent.com/langningchen/ShanghaiTextbook/main/books/${bookId}.pdf.${part}`;
+    const pdfUrl = `https://raw.githubusercontent.com/langningchen/shanghai-textbook/main/books/${bookId}.pdf.${part}`;
     
     const response = await fetch(pdfUrl);
     

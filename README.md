@@ -1,6 +1,6 @@
 # 上海教科书资源库
 
-本项目是一个基于 Next.js + MUI 的上海教科书资源库，支持筛选、懒加载、下载和服务端代理，所有教科书数据均来自[上海教科书 GitHub 仓库](https://github.com/langningchen/ShanghaiTextbook)，通过本地 API 代理访问，解决国内网络访问问题。
+本项目是一个基于 Next.js + MUI 的上海教科书资源库，支持筛选、懒加载、下载和服务端代理，所有教科书数据均来自[上海教科书 GitHub 仓库](https://github.com/langningchen/shanghai-textbook)，通过本地 API 代理访问，解决国内网络访问问题。
 
 ## 功能介绍
 

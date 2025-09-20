@@ -23,7 +23,7 @@ export async function GET() {
   try {
     const { data } = await octokit.rest.repos.getContent({
       owner: 'langningchen',
-      repo: 'ShanghaiTextbook',
+      repo: 'shanghai-textbook',
       path: 'books/bookcase.json',
     });
 

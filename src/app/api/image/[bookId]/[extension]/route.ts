@@ -31,7 +31,7 @@ export async function GET(
       );
     }
 
-    const imageUrl = `https://raw.githubusercontent.com/langningchen/ShanghaiTextbook/main/books/${bookId}.${extension}`;
+    const imageUrl = `https://raw.githubusercontent.com/langningchen/shanghai-textbook/main/books/${bookId}.${extension}`;
     
     const response = await fetch(imageUrl);
     

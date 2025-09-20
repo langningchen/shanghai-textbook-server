@@ -23,7 +23,7 @@ export async function GET(
     const { bookId, part } = await params;
     
     // Construct PDF URL
-    let pdfUrl = `https://raw.githubusercontent.com/langningchen/ShanghaiTextbook/main/books/${bookId}.pdf`;
+    let pdfUrl = `https://raw.githubusercontent.com/langningchen/shanghai-textbook/main/books/${bookId}.pdf`;
     if (part) {
       pdfUrl += `.${part}`;
     }
