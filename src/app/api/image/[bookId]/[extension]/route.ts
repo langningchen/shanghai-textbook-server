@@ -14,6 +14,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { NextRequest, NextResponse } from 'next/server';
+import sharp from 'sharp';
 
 export async function GET(
   request: NextRequest,
@@ -42,10 +43,14 @@ export async function GET(
     }
 
     const imageBuffer = await response.arrayBuffer();
-    
-    return new NextResponse(imageBuffer, {
+    const inputBuffer = Buffer.from(new Uint8Array(imageBuffer));
+    const outputBuffer = await sharp(inputBuffer)
+      .jpeg({ progressive: true })
+      .toBuffer();
+    const body = new Uint8Array(outputBuffer);
+    return new NextResponse(body, {
       headers: {
-        'Content-Type': `image/${extension}`,
+        'Content-Type': 'image/jpeg',
         'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
       },
     });

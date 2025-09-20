@@ -90,27 +90,27 @@ export default function LazyImage({ src, alt, width = '100%', height = 320, sx =
                 </Box>
             ) : (
                 <>
-                    {!imageLoaded && (
-                        <Skeleton
-                            variant="rectangular"
-                            width="100%"
-                            height="100%"
-                            animation="wave"
-                            sx={{ position: 'absolute' }}
-                        />
-                    )}
+                    {/* Skeleton 作为覆盖层，图片始终渲染，不用 display:none 隐藏图片 */}
                     <Image
                         src={src[currentSrcIndex]}
                         alt={alt}
                         fill
                         style={{
                             objectFit: 'contain',
-                            display: imageLoaded ? 'block' : 'none',
                         }}
                         onLoad={handleImageLoad}
                         onError={handleImageError}
                         unoptimized
                     />
+                    {!imageLoaded && (
+                        <Skeleton
+                            variant="rectangular"
+                            width="100%"
+                            height="100%"
+                            animation="wave"
+                            sx={{ position: 'absolute', top: 0, left: 0, zIndex: 2 }}
+                        />
+                    )}
                 </>
             )}
         </Box>
