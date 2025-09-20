@@ -14,6 +14,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Octokit } from '@octokit/rest';
 
 export async function GET(
   request: NextRequest,
@@ -22,23 +23,48 @@ export async function GET(
   try {
     const { bookId, part } = await params;
     
-    const pdfUrl = `https://raw.githubusercontent.com/langningchen/shanghai-textbook/main/books/${bookId}.pdf.${part}`;
-    
-    const response = await fetch(pdfUrl);
-    
-    if (!response.ok) {
+    // 获取 GitHub token
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) {
+      return NextResponse.json(
+        { error: 'GitHub token not configured' },
+        { status: 500 }
+      );
+    }
+
+    const octokit = new Octokit({ auth: token });
+    let pdfContent: Buffer | null = null;
+    let filename = `${bookId}.pdf.${part}`;
+    let path = `books/${bookId}.pdf.${part}`;
+    try {
+      const { data } = await octokit.rest.repos.getContent({
+        owner: 'langningchen',
+        repo: 'shanghai-textbook',
+        path,
+      });
+      if ('content' in data && data.content && data.encoding === 'base64') {
+        pdfContent = Buffer.from(data.content, 'base64');
+      } else if ('download_url' in data && data.download_url) {
+        const response = await fetch(data.download_url);
+        if (!response.ok) {
+          throw new Error('PDF part not found');
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        pdfContent = Buffer.from(arrayBuffer);
+      } else {
+        throw new Error('Unable to get PDF part content');
+      }
+    } catch (err) {
       return NextResponse.json(
         { error: 'PDF part not found' },
         { status: 404 }
       );
     }
 
-    const pdfBuffer = await response.arrayBuffer();
-    
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfContent), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${bookId}.pdf.${part}"`,
+        'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
       },
     });

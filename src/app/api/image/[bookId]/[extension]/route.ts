@@ -14,6 +14,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Octokit } from '@octokit/rest';
 
 export async function GET(
   request: NextRequest,
@@ -29,25 +30,51 @@ export async function GET(
       );
     }
 
-    const imageUrl = `https://raw.githubusercontent.com/langningchen/shanghai-textbook/main/books/${bookId}.${extension}`;
-    
-    const response = await fetch(imageUrl);
-    
-    if (!response.ok) {
+    // 获取 GitHub token
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) {
+      return NextResponse.json(
+        { error: 'GitHub token not configured' },
+        { status: 500 }
+      );
+    }
+
+    const octokit = new Octokit({ auth: token });
+    let imageContent: Buffer | null = null;
+    let contentType = '';
+    try {
+      const { data } = await octokit.rest.repos.getContent({
+        owner: 'langningchen',
+        repo: 'shanghai-textbook',
+        path: `books/${bookId}.${extension}`,
+      });
+      if ('content' in data && data.content && data.encoding === 'base64') {
+        imageContent = Buffer.from(data.content, 'base64');
+        contentType = extension === 'jpg' ? 'image/jpeg' : 'image/png';
+      } else if ('download_url' in data && data.download_url) {
+        // fallback: fetch raw file
+        const response = await fetch(data.download_url);
+        if (!response.ok) {
+          throw new Error('Image not found');
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        imageContent = Buffer.from(arrayBuffer);
+        contentType = extension === 'jpg' ? 'image/jpeg' : 'image/png';
+      } else {
+        throw new Error('Unable to get image content');
+      }
+    } catch (err) {
       return NextResponse.json(
         { error: 'Image not found' },
         { status: 404 }
       );
     }
 
-    const imageBlob = await response.blob();
-    const imageArrayBuffer = await imageBlob.arrayBuffer();
-    const imageBuffer = Buffer.from(imageArrayBuffer);
-
-    return new NextResponse(imageBuffer, {
+    // NextResponse 需要 ArrayBuffer/Uint8Array 作为 body
+    return new NextResponse(new Uint8Array(imageContent), {
       status: 200,
       headers: {
-        'Content-Type': imageBlob.type,
+        'Content-Type': contentType,
         'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
       },
     });

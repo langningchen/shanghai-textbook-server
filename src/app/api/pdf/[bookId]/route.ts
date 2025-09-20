@@ -14,6 +14,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Octokit } from '@octokit/rest';
 
 export async function GET(
   request: NextRequest,
@@ -22,27 +23,45 @@ export async function GET(
   try {
     const { bookId, part } = await params;
     
-    // Construct PDF URL
-    let pdfUrl = `https://raw.githubusercontent.com/langningchen/shanghai-textbook/main/books/${bookId}.pdf`;
-    if (part) {
-      pdfUrl += `.${part}`;
+    // 获取 GitHub token
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) {
+      return NextResponse.json(
+        { error: 'GitHub token not configured' },
+        { status: 500 }
+      );
     }
-    
-    const response = await fetch(pdfUrl);
-    
-    if (!response.ok) {
+
+    const octokit = new Octokit({ auth: token });
+    let pdfContent: Buffer | null = null;
+    let filename = part ? `${bookId}.pdf.${part}` : `${bookId}.pdf`;
+    let path = part ? `books/${bookId}.pdf.${part}` : `books/${bookId}.pdf`;
+    try {
+      const { data } = await octokit.rest.repos.getContent({
+        owner: 'langningchen',
+        repo: 'shanghai-textbook',
+        path,
+      });
+      if ('content' in data && data.content && data.encoding === 'base64') {
+        pdfContent = Buffer.from(data.content, 'base64');
+      } else if ('download_url' in data && data.download_url) {
+        const response = await fetch(data.download_url);
+        if (!response.ok) {
+          throw new Error('PDF not found');
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        pdfContent = Buffer.from(arrayBuffer);
+      } else {
+        throw new Error('Unable to get PDF content');
+      }
+    } catch (err) {
       return NextResponse.json(
         { error: 'PDF not found' },
         { status: 404 }
       );
     }
 
-    const pdfBuffer = await response.arrayBuffer();
-    
-    // Generate filename
-    const filename = part ? `${bookId}.pdf.${part}` : `${bookId}.pdf`;
-    
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfContent), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
