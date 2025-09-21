@@ -40,7 +40,7 @@ export interface Textbook {
   subject: string;
   used_grade_semesters: GradeSemester[];
   textbook_material_type: string;
-  publisher: string;
+  publisher?: string; // Made optional as it might not be in detail API
   grade: string;
   term: string;
   use_type: string;

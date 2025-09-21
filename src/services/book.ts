@@ -39,6 +39,20 @@ export class BookService {
     const books = await this.getAllBooks();
     return books.find(book => book.uuid === bookId) || null;
   }
+
+  /**
+   * Get detailed information for a specific book by ID
+   */
+  async getBookDetail(bookId: string): Promise<Textbook | null> {
+    try {
+      const content = await this.githubService.getTextFileContent(`books/${bookId}.json`);
+      const book: Textbook = JSON.parse(content);
+      return book;
+    } catch (error) {
+      console.error(`Failed to fetch book detail for ${bookId}:`, error);
+      return null;
+    }
+  }
 }
 
 export const createBookService = (githubService: GitHubService): BookService => {
