@@ -41,7 +41,6 @@ import { Textbook } from '@/types/textbook';
 import {
     getGradeDisplayName,
     getTermDisplayName,
-    getPublisherDisplayName,
     getUseTypeDisplayName
 } from '@/utils/helpers';
 import LazyImage from './LazyImage';

@@ -16,15 +16,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createGitHubService, createBookService } from '../../../../../services';
 
-interface RouteParams {
-  params: {
-    bookid: string;
-  };
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ bookid: string }> }
+) {
   try {
-    const { bookid } = params;
+    const { bookid } = await params;
 
     if (!bookid) {
       return NextResponse.json(

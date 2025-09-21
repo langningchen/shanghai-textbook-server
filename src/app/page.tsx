@@ -28,8 +28,18 @@ import {
   Fab,
   Backdrop,
   Pagination,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from '@mui/material';
-import { School as SchoolIcon, KeyboardArrowUp as KeyboardArrowUpIcon } from '@mui/icons-material';
+import {
+  School as SchoolIcon,
+  KeyboardArrowUp as KeyboardArrowUpIcon,
+  GitHub as GitHubIcon
+} from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
@@ -66,6 +76,10 @@ export default function HomePage() {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  // 简化菜单状态
+  const menuOpen = Boolean(anchorEl);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -129,6 +143,19 @@ export default function HomePage() {
     });
   };
 
+  const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleGitHubOpen = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    handleMenuClose();
+  };
+
   // Calculate pagination
   const totalPages = Math.ceil(filteredBooks.length / booksPerPage);
   const startIndex = (currentPage - 1) * booksPerPage;
@@ -182,12 +209,48 @@ export default function HomePage() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             上海教科书资源库
           </Typography>
-          <Typography variant="body2">
+          <Typography variant="body2" sx={{ mr: 2 }}>
             共 {filteredBooks.length} 本教科书
             {totalPages > 1 && (
               <span> • 第 {currentPage} / {totalPages} 页</span>
             )}
           </Typography>
+
+          {/* GitHub 仓库菜单 */}
+          <IconButton
+            color="inherit"
+            onClick={handleMenuClick}
+            aria-label="GitHub 仓库"
+          >
+            <GitHubIcon />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={menuOpen}
+            onClose={handleMenuClose}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          >
+            <MenuItem onClick={() => handleGitHubOpen('https://github.com/langningchen/shanghai-textbook-server')}>
+              <ListItemIcon>
+                <GitHubIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary="服务器仓库"
+                secondary="langningchen/shanghai-textbook-server"
+              />
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={() => handleGitHubOpen('https://github.com/langningchen/shanghai-textbooks')}>
+              <ListItemIcon>
+                <GitHubIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary="爬虫 + 数据仓库"
+                secondary="langningchen/shanghai-textbooks"
+              />
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 
