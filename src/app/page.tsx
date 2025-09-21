@@ -35,7 +35,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 
 import { Textbook, FilterOptions } from '@/types/textbook';
 import { filterBooks } from '@/utils/helpers';
-import { downloadFiles } from '@/utils/download';
 import BookCard from '@/components/BookCard';
 import BookFilter from '@/components/BookFilter';
 
@@ -64,7 +63,7 @@ export default function HomePage() {
   const [filters, setFilters] = useState<FilterOptions>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -97,13 +96,13 @@ export default function HomePage() {
   const fetchBooks = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/books');
-      const result = await response.json() as { success: boolean; data?: Textbook[]; error?: string; };
+      const response = await fetch('/api/book');
+      const { success, data, error } = await response.json() as { success: boolean; data?: Textbook[]; error?: string; };
 
-      if (result.success && result.data) {
-        setBooks(result.data);
+      if (success && data) {
+        setBooks(data);
       } else {
-        setError(result.error || '获取数据失败');
+        setError(error || '获取数据失败');
       }
     } catch {
       setError('网络错误，请检查连接');
@@ -112,39 +111,22 @@ export default function HomePage() {
     }
   };
 
-  const handleDownload = async (bookId: string, pdfPaths: string[]) => {
-    try {
-      setDownloading(true);
-      await downloadFiles(bookId, pdfPaths);
-      setSnackbar({
-        open: true,
-        message: '下载已开始，请检查浏览器下载文件夹',
-        severity: 'success'
-      });
-    } catch (err) {
-      setSnackbar({
-        open: true,
-        message: err instanceof Error ? err.message : '下载失败',
-        severity: 'error'
-      });
-    } finally {
-      setDownloading(false);
-    }
-  };
+  const handleDownload = (bookId: string, pdfPath: string) => {
+    setDownloading(bookId);
 
-  const handleFiltersChange = (newFilters: FilterOptions) => {
-    setFilters(newFilters);
-  };
+    const link = document.createElement('a');
+    link.href = pdfPath;
+    link.download = `${bookId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-  const handleClearFilters = () => {
-    setFilters({});
-    setCurrentPage(1);
-  };
-
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-    setCurrentPage(value);
-    // Scroll to top when page changes
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setDownloading(null);
+    setSnackbar({
+      open: true,
+      message: '下载已开始，请检查浏览器下载文件夹',
+      severity: 'success'
+    });
   };
 
   // Calculate pagination
@@ -152,10 +134,6 @@ export default function HomePage() {
   const startIndex = (currentPage - 1) * booksPerPage;
   const endIndex = startIndex + booksPerPage;
   const currentBooks = filteredBooks.slice(startIndex, endIndex);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   if (loading) {
     return (
@@ -228,8 +206,11 @@ export default function HomePage() {
         {/* Filters */}
         <BookFilter
           filters={filters}
-          onFiltersChange={handleFiltersChange}
-          onClearFilters={handleClearFilters}
+          onFiltersChange={setFilters}
+          onClearFilters={() => {
+            setFilters({});
+            setCurrentPage(1);
+          }}
           books={books}
         />
 
@@ -275,7 +256,10 @@ export default function HomePage() {
                   <Pagination
                     count={totalPages}
                     page={currentPage}
-                    onChange={handlePageChange}
+                    onChange={(_, value) => {
+                      setCurrentPage(value);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
                     color="primary"
                     size="large"
                     showFirstButton
@@ -307,7 +291,7 @@ export default function HomePage() {
         <Fab
           color="primary"
           size="small"
-          onClick={scrollToTop}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           sx={{
             position: 'fixed',
             bottom: 16,
@@ -320,7 +304,7 @@ export default function HomePage() {
       )}
 
       {/* Download Backdrop */}
-      <Backdrop open={downloading} sx={{ zIndex: 9999 }}>
+      <Backdrop open={downloading !== null} sx={{ zIndex: 9999 }}>
         <Box textAlign="center" color="white">
           <CircularProgress color="inherit" />
           <Typography variant="h6" sx={{ mt: 2 }}>

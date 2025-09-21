@@ -49,14 +49,6 @@ export default function BookFilter({
     books
 }: BookFilterProps) {
     const uniqueSubjects = getUniqueSubjects(books);
-
-    const handleFilterChange = (key: keyof FilterOptions, value: string) => {
-        onFiltersChange({
-            ...filters,
-            [key]: value || undefined,
-        });
-    };
-
     const hasActiveFilters = Object.values(filters).some(value => value);
 
     return (
@@ -97,7 +89,7 @@ export default function BookFilter({
                         label="搜索"
                         placeholder="书名、科目..."
                         value={filters.search || ''}
-                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                        onChange={(e) => onFiltersChange({ ...filters, search: e.target.value || undefined })}
                         size="small"
                     />
 
@@ -105,7 +97,7 @@ export default function BookFilter({
                         options={GRADE_OPTIONS}
                         getOptionLabel={(option) => option.label}
                         value={GRADE_OPTIONS.find(option => option.value === filters.grade) || null}
-                        onChange={(_, value) => handleFilterChange('grade', value?.value || '')}
+                        onChange={(_, value) => onFiltersChange({ ...filters, grade: value?.value || undefined })}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -121,7 +113,7 @@ export default function BookFilter({
                         options={TERM_OPTIONS}
                         getOptionLabel={(option) => option.label}
                         value={TERM_OPTIONS.find(option => option.value === filters.term) || null}
-                        onChange={(_, value) => handleFilterChange('term', value?.value || '')}
+                        onChange={(_, value) => onFiltersChange({ ...filters, term: value?.value || undefined })}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -136,7 +128,7 @@ export default function BookFilter({
                     <Autocomplete
                         options={uniqueSubjects}
                         value={filters.subject || ''}
-                        onChange={(_, value) => handleFilterChange('subject', value || '')}
+                        onChange={(_, value) => onFiltersChange({ ...filters, subject: value || undefined })}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -152,7 +144,7 @@ export default function BookFilter({
                         options={PUBLISHER_OPTIONS}
                         getOptionLabel={(option) => option.label}
                         value={PUBLISHER_OPTIONS.find(option => option.value === filters.publisher) || null}
-                        onChange={(_, value) => handleFilterChange('publisher', value?.value || '')}
+                        onChange={(_, value) => onFiltersChange({ ...filters, publisher: value?.value || undefined })}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -168,7 +160,7 @@ export default function BookFilter({
                         options={USE_TYPE_OPTIONS}
                         getOptionLabel={(option) => option.label}
                         value={USE_TYPE_OPTIONS.find(option => option.value === filters.useType) || null}
-                        onChange={(_, value) => handleFilterChange('useType', value?.value || '')}
+                        onChange={(_, value) => onFiltersChange({ ...filters, useType: value?.value || undefined })}
                         renderInput={(params) => (
                             <TextField
                                 {...params}

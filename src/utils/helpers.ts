@@ -36,27 +36,6 @@ export function getUseTypeDisplayName(useType: string): string {
   return USE_TYPE_MAPPINGS[useType as keyof typeof USE_TYPE_MAPPINGS] || '未知';
 }
 
-// Generate book cover image path via proxy
-export function getBookCoverPath(bookId: string): string[] {
-  return [
-    `/api/image/${bookId}/jpg`,
-    `/api/image/${bookId}/png`
-  ];
-}
-
-// Generate book PDF download paths via proxy
-export function getBookPdfPaths(bookId: string): string[] {
-  const basePath = `/api/pdf/${bookId}`;
-  const paths = [basePath];
-  
-  // Check for multiple parts (.pdf.1, .pdf.2, etc.)
-  for (let i = 1; i <= 10; i++) {
-    paths.push(`/api/pdf/${bookId}/${i}`);
-  }
-  
-  return paths;
-}
-
 // Filter books based on criteria
 export function filterBooks(books: Textbook[], filters: FilterOptions): Textbook[] {
   return books.filter(book => {

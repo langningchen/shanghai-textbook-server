@@ -34,23 +34,18 @@ import {
     getGradeDisplayName,
     getTermDisplayName,
     getPublisherDisplayName,
-    getUseTypeDisplayName,
-    getBookCoverPath,
-    getBookPdfPaths
+    getUseTypeDisplayName
 } from '@/utils/helpers';
 import LazyImage from './LazyImage';
 
 interface BookCardProps {
     book: Textbook;
-    onDownload: (bookId: string, pdfPaths: string[]) => void;
+    onDownload: (bookId: string, pdfPath: string) => void;
 }
 
 export default function BookCard({ book, onDownload }: BookCardProps) {
-    const coverPaths = getBookCoverPath(book.uuid);
-    const pdfPaths = getBookPdfPaths(book.uuid);
-
     const handleDownload = () => {
-        onDownload(book.uuid, pdfPaths);
+        onDownload(book.uuid, `/api/book/${book.uuid}/pdf`);
     };
 
     return (
@@ -68,7 +63,7 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
         >
             <Box sx={{ position: 'relative' }}>
                 <LazyImage
-                    src={coverPaths}
+                    src={`/api/book/${book.uuid}/cover`}
                     alt={book.title}
                     height={360}
                     sx={{ borderRadius: '4px 4px 0 0' }}

@@ -14,36 +14,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { NextResponse } from 'next/server';
-import { Octokit } from '@octokit/rest';
-import { Textbook } from '@/types/textbook';
-
-const octokit = new Octokit();
+import { createGitHubService, createBookService } from '../../../services';
 
 export async function GET() {
   try {
-    const { data } = await octokit.rest.repos.getContent({
-      owner: 'langningchen',
-      repo: 'shanghai-textbook',
-      path: 'books/bookcase.json',
-    });
-
-    let content: string;
+    const token = process.env.GITHUB_TOKEN;
+    const githubService = createGitHubService(token);
+    const bookService = createBookService(githubService);
     
-    if ('content' in data && data.content && data.encoding === 'base64') {
-      // For smaller files, GitHub returns base64 encoded content
-      content = Buffer.from(data.content, 'base64').toString('utf-8');
-    } else if ('download_url' in data && data.download_url) {
-      // For larger files, use the download_url to fetch the raw content
-      const response = await fetch(data.download_url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch file: ${response.statusText}`);
-      }
-      content = await response.text();
-    } else {
-      throw new Error('Unable to get file content');
-    }
-
-    const books: Textbook[] = JSON.parse(content);
+    const books = await bookService.getAllBooks();
     
     return NextResponse.json({ 
       success: true, 
@@ -54,7 +33,7 @@ export async function GET() {
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to fetch books from GitHub' 
+        error: error instanceof Error ? error.message : 'Failed to fetch books from GitHub' 
       }, 
       { status: 500 }
     );
