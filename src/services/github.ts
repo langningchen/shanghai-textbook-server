@@ -120,7 +120,7 @@ export class GitHubService {
 export const createGitHubService = (token?: string): GitHubService => {
   return new GitHubService({
     owner: 'langningchen',
-    repo: 'shanghai-textbook',
+    repo: 'shanghai-textbook-data',
     token,
   });
 };

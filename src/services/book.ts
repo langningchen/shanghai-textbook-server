@@ -24,7 +24,7 @@ export class BookService {
    */
   async getAllBooks(): Promise<Textbook[]> {
     try {
-      const content = await this.githubService.getTextFileContent('books/bookcase.json');
+      const content = await this.githubService.getTextFileContent('bookcase.json');
       const books: Textbook[] = JSON.parse(content);
       return books;
     } catch (error) {
@@ -45,7 +45,7 @@ export class BookService {
    */
   async getBookDetail(bookId: string): Promise<Textbook | null> {
     try {
-      const content = await this.githubService.getTextFileContent(`books/${bookId}.json`);
+      const content = await this.githubService.getTextFileContent(`${bookId.charAt(0)}/${bookId}.json`);
       const book: Textbook = JSON.parse(content);
       return book;
     } catch (error) {

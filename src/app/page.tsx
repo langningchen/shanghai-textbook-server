@@ -241,12 +241,22 @@ export default function HomePage() {
               />
             </MenuItem>
             <Divider />
+            <MenuItem onClick={() => handleGitHubOpen('https://github.com/langningchen/shanghai-textbook-data')}>
+              <ListItemIcon>
+                <GitHubIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary="数据仓库"
+                secondary="langningchen/shanghai-textbook-data"
+              />
+            </MenuItem>
+            <Divider />
             <MenuItem onClick={() => handleGitHubOpen('https://github.com/langningchen/shanghai-textbook')}>
               <ListItemIcon>
                 <GitHubIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText
-                primary="爬虫 + 数据仓库"
+                primary="爬虫仓库"
                 secondary="langningchen/shanghai-textbook"
               />
             </MenuItem>

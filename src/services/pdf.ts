@@ -24,7 +24,7 @@ export class PDFService {
    */
   async getBookPDF(bookId: string): Promise<Buffer> {
     // First try to get the main PDF file
-    const mainPdfPath = `books/${bookId}.pdf`;
+    const mainPdfPath = `${bookId.charAt(0)}/${bookId}.pdf`;
     
     try {
       const mainPdf = await this.githubService.getFileContent(mainPdfPath);
@@ -57,7 +57,7 @@ export class PDFService {
     
     // Check for up to 10 parts
     for (let i = 1; i <= 10; i++) {
-      const partPath = `books/${bookId}.pdf.${i}`;
+      const partPath = `${bookId.charAt(0)}/${bookId}.pdf.${i}`;
       try {
         const partContent = await this.githubService.getFileContent(partPath);
         parts.push(partContent);
@@ -78,7 +78,7 @@ export class PDFService {
     
     // Check for up to 10 parts starting from .1
     for (let i = 1; i <= 10; i++) {
-      const partPath = `books/${bookId}.pdf.${i}`;
+      const partPath = `${bookId.charAt(0)}/${bookId}.pdf.${i}`;
       try {
         const partContent = await this.githubService.getFileContent(partPath);
         parts.push(partContent);
