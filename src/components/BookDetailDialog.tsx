@@ -69,7 +69,7 @@ const formatUpdateTime = (updateTime: string) => {
 };
 
 const getGitHubUrl = (bookId: string) => {
-    return `https://github.com/langningchen/shanghai-textbook-data/blob/main/${bookId}.json`;
+    return `https://github.com/langningchen/shanghai-textbook-data/blob/main/books/${bookId}.json`;
 };
 
 const getTextbookMaterialTypeDisplay = (type: string) => {

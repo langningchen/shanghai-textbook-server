@@ -30,8 +30,8 @@ export class ImageService {
    */
   async getBookCover(bookId: string): Promise<ImageResult> {
     const possiblePaths = [
-      { path: `${bookId.charAt(0)}/${bookId}.jpg`, contentType: 'image/jpeg', extension: 'jpg' },
-      { path: `${bookId.charAt(0)}/${bookId}.png`, contentType: 'image/png', extension: 'png' },
+      { path: `books/${bookId}.jpg`, contentType: 'image/jpeg', extension: 'jpg' },
+      { path: `books/${bookId}.png`, contentType: 'image/png', extension: 'png' },
     ];
 
     for (const { path, contentType, extension } of possiblePaths) {
@@ -54,7 +54,7 @@ export class ImageService {
       throw new Error(`Invalid image format: ${extension}`);
     }
 
-    const path = `${bookId.charAt(0)}/${bookId}.${extension}`;
+    const path = `books/${bookId}.${extension}`;
     const contentType = extension === 'jpg' ? 'image/jpeg' : 'image/png';
 
     try {
