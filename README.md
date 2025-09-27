@@ -1,43 +1,46 @@
-# 上海教科书资源库
+# 上海教材项目 — 服务端仓库
 
-本项目是一个基于 Next.js + MUI 的上海教科书资源库，支持筛选、懒加载、下载和服务端代理，所有教科书数据均来自[上海教科书 GitHub 仓库](https://github.com/langningchen/shanghai-textbook)，通过本地 API 代理访问，解决国内网络访问问题。
+本仓库负责读取教材数据仓库内容，并通过 API 及前端页面展示教材内容。你可以访问示例网站：[textbook.langningchen.com](https://textbook.langningchen.com)。
+
+## 项目相关仓库
+
+- **爬虫仓库:** [langningchen/shanghai-textbook](https://github.com/langningchen/shanghai-textbook)
+- **数据仓库:** [langningchen/shanghai-textbook-data](https://github.com/langningchen/shanghai-textbook-data)
+- **服务端仓库（当前仓库）:** [langningchen/shanghai-textbook-server](https://github.com/langningchen/shanghai-textbook-server)
 
 ## 功能介绍
 
-- 按学段、年级、学科、版本筛选教科书
-- 支持分页浏览，提升性能
-- 教科书封面图片懒加载，优化加载速度
-- 一键下载 PDF 教材，支持分卷下载
-- 所有图片和 PDF 均通过服务端代理，避免直连 GitHub
-- 响应式布局，适配桌面和移动端
+- 读取和解析数据仓库内容
+- 提供 RESTful API，供前端或第三方应用调用
+- 集成前端页面，在线浏览教材内容
+- 支持多学科、多年级的内容展示与搜索
+- 可扩展性强，便于二次开发和集成
 
-## 安装与运行
+## 快速开始
 
-1. 安装依赖：
+1. 克隆仓库：
+   ```bash
+   git clone https://github.com/langningchen/shanghai-textbook-server.git
+   cd shanghai-textbook-server
+   ```
+2. 安装依赖：
+   ```bash
+   npm install
+   # 或
+   pnpm install
+   ```
+3. 配置数据仓库路径与网站参数，启动服务端：
+   ```bash
+   npm start
+   # 或
+   pnpm start
+   ```
+4. 访问示例网站：[textbook.langningchen.com](https://textbook.langningchen.com)
 
-	```bash
-	pnpm install
-	```
+## 许可证
 
-2. 启动开发服务器：
+本项目采用 [GNU Affero 通用公共许可证 v3.0](https://github.com/langningchen/shanghai-textbook-server/blob/main/LICENSE) 授权。
 
-	```bash
-	pnpm dev
-	```
+## 已知问题
 
-3. 访问 [http://localhost:3000](http://localhost:3000)
-
-
-## 部署说明
-
-已部署生产环境： [https://textbook.langningchen.com](https://textbook.langningchen.com)
-
-支持 Cloudflare 部署，所有 GitHub 资源均通过服务端 API 代理，确保国内可访问。
-
-## 数据来源
-
-教科书数据来自上海教科书 GitHub 仓库：[https://github.com/langningchen/shanghai-textbook](https://github.com/langningchen/shanghai-textbook)
-
-## 贡献与反馈
-
-欢迎提交 Issue 或 PR 改进项目。如有建议或问题，请在 GitHub 仓库留言。
+请参见 [GitHub Issues](https://github.com/langningchen/shanghai-textbook-server/issues)。
