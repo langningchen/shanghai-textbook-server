@@ -85,21 +85,18 @@ export function getUniqueSubjects(books: Textbook[]): string[] {
 
 // Generate a friendly filename for a book PDF
 export function generateFriendlyFilename(book: Textbook): string {
-  // Sanitize title - remove invalid filename characters
   const sanitize = (str: string) => {
     return str
-      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '') // Remove invalid characters
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
   };
 
   const title = sanitize(book.title);
   const publisher = book.publisher ? sanitize(getPublisherDisplayName(book.publisher)) : '';
   
-  // Create filename: title - publisher.pdf or just title.pdf if no publisher
   let filename = publisher ? `${title} - ${publisher}` : title;
   
-  // Truncate if too long (keep it under 200 characters to be safe)
   if (filename.length > 200) {
     filename = filename.substring(0, 200).trim();
   }

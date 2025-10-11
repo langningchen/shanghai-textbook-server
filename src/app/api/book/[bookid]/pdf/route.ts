@@ -43,21 +43,17 @@ export async function GET(
     const pdfService = createPDFService(githubService);
     const bookService = createBookService(githubService);
     
-    // Fetch book detail to generate friendly filename
     const bookDetail = await bookService.getBookDetail(bookid);
     const filename = bookDetail ? generateFriendlyFilename(bookDetail) : `${bookid}.pdf`;
     
     const pdfContent = await pdfService.getBookPDF(bookid);
-    
-    // Encode filename for Content-Disposition header (RFC 5987)
-    // This ensures proper handling of non-ASCII characters (Chinese)
     const encodedFilename = encodeURIComponent(filename);
     
     return new NextResponse(new Uint8Array(pdfContent), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`,
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'public, max-age=3600',
       },
     });
   } catch (error) {
