@@ -14,7 +14,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createGitHubService, createPDFService } from '../../../../../services';
+import { createGitHubService, createPDFService, createBookService } from '../../../../../services';
+import { generateFriendlyFilename } from '../../../../../utils/helpers';
 
 export async function GET(
   request: NextRequest,
@@ -40,14 +41,22 @@ export async function GET(
 
     const githubService = createGitHubService(token);
     const pdfService = createPDFService(githubService);
+    const bookService = createBookService(githubService);
+    
+    // Fetch book detail to generate friendly filename
+    const bookDetail = await bookService.getBookDetail(bookid);
+    const filename = bookDetail ? generateFriendlyFilename(bookDetail) : `${bookid}.pdf`;
     
     const pdfContent = await pdfService.getBookPDF(bookid);
-    const filename = `${bookid}.pdf`;
+    
+    // Encode filename for Content-Disposition header (RFC 5987)
+    // This ensures proper handling of non-ASCII characters (Chinese)
+    const encodedFilename = encodeURIComponent(filename);
     
     return new NextResponse(new Uint8Array(pdfContent), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`,
         'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
       },
     });

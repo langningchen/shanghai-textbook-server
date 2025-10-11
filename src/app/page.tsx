@@ -130,7 +130,7 @@ export default function HomePage() {
 
     const link = document.createElement('a');
     link.href = pdfPath;
-    link.download = `${bookId}.pdf`;
+    // Filename is set by server via Content-Disposition header
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
