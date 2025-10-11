@@ -82,3 +82,24 @@ export function getUniqueSubjects(books: Textbook[]): string[] {
   const subjects = new Set(books.map(book => book.subject_str));
   return Array.from(subjects).sort();
 }
+
+// Generate a friendly filename for a book PDF
+export function generateFriendlyFilename(book: Textbook): string {
+  const sanitize = (str: string) => {
+    return str
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const title = sanitize(book.title);
+  const publisher = book.publisher ? sanitize(getPublisherDisplayName(book.publisher)) : '';
+  
+  let filename = publisher ? `${title} - ${publisher}` : title;
+  
+  if (filename.length > 200) {
+    filename = filename.substring(0, 200).trim();
+  }
+  
+  return `${filename}.pdf`;
+}
