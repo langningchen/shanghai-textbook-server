@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@octokit/rest'],
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
       config.resolve.fallback = {
