@@ -18,7 +18,7 @@
 		"@mui/material": "^7.3.6",
 		"@octokit/rest": "^22.0.1",
 		"@opennextjs/cloudflare": "^1.14.6",
-		"next": "16.0.10",
+		"next": "16.1.5",
 		"react": "19.2.3",
 		"react-dom": "19.2.3",
 		"react-intersection-observer": "^10.0.0"
