@@ -48,13 +48,18 @@ export async function GET(
     
     const pdfContent = await pdfService.getBookPDF(bookid);
     const encodedFilename = encodeURIComponent(filename);
+    const previewMode = request.nextUrl.searchParams.get('preview') === '1';
+    const headers: HeadersInit = {
+      'Content-Type': 'application/pdf',
+      'Cache-Control': 'public, max-age=3600',
+    };
+
+    if (!previewMode) {
+      headers['Content-Disposition'] = `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`;
+    }
     
     return new NextResponse(new Uint8Array(pdfContent), {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`,
-        'Cache-Control': 'public, max-age=3600',
-      },
+      headers,
     });
   } catch (error) {
     console.error('PDF fetch error:', error);
