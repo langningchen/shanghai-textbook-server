@@ -34,19 +34,35 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Checkbox,
+  ToggleButton,
+  ToggleButtonGroup,
+  Button,
 } from '@mui/material';
 import {
   School as SchoolIcon,
   KeyboardArrowUp as KeyboardArrowUpIcon,
-  GitHub as GitHubIcon
+  GitHub as GitHubIcon,
+  Download as DownloadIcon,
+  Info as InfoIcon,
+  ViewModule as ViewModuleIcon,
+  ViewList as ViewListIcon,
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
 import { Textbook, FilterOptions } from '@/types/textbook';
-import { filterBooks } from '@/utils/helpers';
+import { filterBooks, getGradeDisplayName, getTermDisplayName } from '@/utils/helpers';
 import BookCard from '@/components/BookCard';
 import BookFilter from '@/components/BookFilter';
+import BookDetailDialog from '@/components/BookDetailDialog';
 
 const theme = createTheme({
   palette: {
@@ -77,6 +93,11 @@ export default function HomePage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedBookIds, setSelectedBookIds] = useState<string[]>([]);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailBook, setDetailBook] = useState<Textbook | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // 简化菜单状态
   const menuOpen = Boolean(anchorEl);
@@ -105,6 +126,7 @@ export default function HomePage() {
     const filtered = filterBooks(books, filters);
     setFilteredBooks(filtered);
     setCurrentPage(1); // Reset to first page when filters change
+    setSelectedBookIds([]);
   }, [books, filters]);
 
   const fetchBooks = async () => {
@@ -125,7 +147,7 @@ export default function HomePage() {
     }
   };
 
-  const handleDownload = (bookId: string, pdfPath: string) => {
+  const handleDownload = (bookId: string, pdfPath: string, silent = false) => {
     setDownloading(bookId);
 
     const link = document.createElement('a');
@@ -135,11 +157,13 @@ export default function HomePage() {
     document.body.removeChild(link);
 
     setDownloading(null);
-    setSnackbar({
-      open: true,
-      message: '下载已开始，请检查浏览器下载文件夹',
-      severity: 'success'
-    });
+    if (!silent) {
+      setSnackbar({
+        open: true,
+        message: '下载已开始，请检查浏览器下载文件夹',
+        severity: 'success'
+      });
+    }
   };
 
   const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -155,11 +179,92 @@ export default function HomePage() {
     handleMenuClose();
   };
 
+  const handleShowDetail = async (bookId: string) => {
+    setDetailDialogOpen(true);
+    setDetailLoading(true);
+
+    try {
+      const response = await fetch(`/api/book/${bookId}/detail`);
+      const result = await response.json() as { success: boolean; data?: Textbook; error?: string; };
+
+      if (result.success && result.data) {
+        setDetailBook(result.data);
+      } else {
+        setDetailBook(null);
+        setSnackbar({
+          open: true,
+          message: result.error || '加载详情失败',
+          severity: 'error',
+        });
+      }
+    } catch {
+      setDetailBook(null);
+      setSnackbar({
+        open: true,
+        message: '加载详情失败，请稍后重试',
+        severity: 'error',
+      });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleCloseDetail = () => {
+    setDetailDialogOpen(false);
+    setDetailBook(null);
+  };
+
+  const handleViewModeChange = (_event: React.MouseEvent<HTMLElement>, nextMode: 'grid' | 'list' | null) => {
+    if (nextMode) {
+      setViewMode(nextMode);
+      setSelectedBookIds([]);
+    }
+  };
+
+  const handleToggleBookSelection = (bookId: string) => {
+    setSelectedBookIds((prev) => (
+      prev.includes(bookId)
+        ? prev.filter((id) => id !== bookId)
+        : [...prev, bookId]
+    ));
+  };
+
+  const handleSelectAllCurrentPage = (checked: boolean) => {
+    if (checked) {
+      setSelectedBookIds(currentBooks.map((book) => book.uuid));
+      return;
+    }
+    setSelectedBookIds([]);
+  };
+
+  const handleBatchDownload = () => {
+    if (selectedBookIds.length === 0) {
+      setSnackbar({
+        open: true,
+        message: '请先选择要下载的教材',
+        severity: 'error',
+      });
+      return;
+    }
+
+    selectedBookIds.forEach((bookId) => {
+      handleDownload(bookId, `/api/book/${bookId}/pdf`, true);
+    });
+
+    setSnackbar({
+      open: true,
+      message: `已开始批量下载 ${selectedBookIds.length} 本教材`,
+      severity: 'success',
+    });
+  };
+
   // Calculate pagination
   const totalPages = Math.ceil(filteredBooks.length / booksPerPage);
   const startIndex = (currentPage - 1) * booksPerPage;
   const endIndex = startIndex + booksPerPage;
   const currentBooks = filteredBooks.slice(startIndex, endIndex);
+  const selectedCountInCurrentPage = currentBooks.filter((book) => selectedBookIds.includes(book.uuid)).length;
+  const allCurrentPageSelected = currentBooks.length > 0 && selectedCountInCurrentPage === currentBooks.length;
 
   if (loading) {
     return (
@@ -298,28 +403,122 @@ export default function HomePage() {
           </Box>
         ) : (
           <>
-            {/* Books Grid */}
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: {
-                  xs: 'repeat(1, 1fr)',
-                  sm: 'repeat(2, 1fr)',
-                  md: 'repeat(3, 1fr)',
-                  lg: 'repeat(4, 1fr)',
-                },
-                gap: 3,
-                mb: 4,
-              }}
-            >
-              {currentBooks.map((book, index) => {
-                // Create a unique key combining multiple fields to ensure uniqueness
-                const uniqueKey = `${book.uuid}-${book.isbn}-${startIndex + index}`;
-                return (
-                  <BookCard key={uniqueKey} book={book} onDownload={handleDownload} />
-                );
-              })}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                size="small"
+                onChange={handleViewModeChange}
+                aria-label="展示方式"
+              >
+                <ToggleButton value="grid" aria-label="卡片模式">
+                  <ViewModuleIcon sx={{ mr: 0.5 }} />
+                  卡片
+                </ToggleButton>
+                <ToggleButton value="list" aria-label="列表模式">
+                  <ViewListIcon sx={{ mr: 0.5 }} />
+                  列表
+                </ToggleButton>
+              </ToggleButtonGroup>
+
+              {viewMode === 'list' && (
+                <Button
+                  variant="contained"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleBatchDownload}
+                  disabled={selectedBookIds.length === 0}
+                >
+                  批量下载（{selectedBookIds.length}）
+                </Button>
+              )}
             </Box>
+
+            {viewMode === 'grid' ? (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: 'repeat(1, 1fr)',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(4, 1fr)',
+                  },
+                  gap: 3,
+                  mb: 4,
+                }}
+              >
+                {currentBooks.map((book, index) => {
+                  const uniqueKey = `${book.uuid}-${book.isbn}-${startIndex + index}`;
+                  return (
+                    <BookCard key={uniqueKey} book={book} onDownload={handleDownload} />
+                  );
+                })}
+              </Box>
+            ) : (
+              <TableContainer component={Paper} sx={{ mb: 4 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          indeterminate={selectedCountInCurrentPage > 0 && !allCurrentPageSelected}
+                          checked={allCurrentPageSelected}
+                          onChange={(event) => handleSelectAllCurrentPage(event.target.checked)}
+                          inputProps={{ 'aria-label': '选择当前页全部教材' }}
+                        />
+                      </TableCell>
+                      <TableCell>书名</TableCell>
+                      <TableCell>年级</TableCell>
+                      <TableCell>学期</TableCell>
+                      <TableCell>科目</TableCell>
+                      <TableCell>ISBN</TableCell>
+                      <TableCell align="right">操作</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {currentBooks.map((book) => {
+                      const isSelected = selectedBookIds.includes(book.uuid);
+                      return (
+                        <TableRow key={book.uuid} hover selected={isSelected}>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={isSelected}
+                              onChange={() => handleToggleBookSelection(book.uuid)}
+                              inputProps={{ 'aria-label': `选择教材 ${book.title}` }}
+                            />
+                          </TableCell>
+                          <TableCell>{book.title}</TableCell>
+                          <TableCell>{getGradeDisplayName(book.grade)}</TableCell>
+                          <TableCell>{getTermDisplayName(book.term)}</TableCell>
+                          <TableCell>{book.subject_str}</TableCell>
+                          <TableCell>{book.isbn}</TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <Button
+                                size="small"
+                                startIcon={<InfoIcon />}
+                                variant="outlined"
+                                onClick={() => handleShowDetail(book.uuid)}
+                              >
+                                详情
+                              </Button>
+                              <Button
+                                size="small"
+                                startIcon={<DownloadIcon />}
+                                variant="contained"
+                                onClick={() => handleDownload(book.uuid, `/api/book/${book.uuid}/pdf`)}
+                              >
+                                下载
+                              </Button>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -357,6 +556,14 @@ export default function HomePage() {
           </>
         )}
       </Container>
+
+      <BookDetailDialog
+        open={detailDialogOpen}
+        onClose={handleCloseDetail}
+        book={detailBook}
+        loading={detailLoading}
+        onDownload={handleDownload}
+      />
 
       {/* Scroll to Top */}
       {showScrollTop && (

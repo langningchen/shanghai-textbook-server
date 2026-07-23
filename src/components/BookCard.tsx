@@ -210,6 +210,7 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
                 onClose={handleCloseDetail}
                 book={detailBook}
                 loading={detailLoading}
+                onDownload={onDownload}
             />
         </>
     );

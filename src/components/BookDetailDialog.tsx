@@ -50,6 +50,7 @@ interface BookDetailDialogProps {
     onClose: () => void;
     book: Textbook | null;
     loading: boolean;
+    onDownload: (bookId: string, pdfPath: string) => void;
 }
 
 const formatUpdateTime = (updateTime: string) => {
@@ -82,7 +83,7 @@ const getTextbookMaterialTypeDisplay = (type: string) => {
     return typeMap[type] || type;
 };
 
-export default function BookDetailDialog({ open, onClose, book, loading }: BookDetailDialogProps) {
+export default function BookDetailDialog({ open, onClose, book, loading, onDownload }: BookDetailDialogProps) {
     if (!open) return null;
 
     return (
@@ -391,6 +392,26 @@ export default function BookDetailDialog({ open, onClose, book, loading }: BookD
                                 </Box>
                             </Box>
                         </Paper>
+
+                        {/* PDF 在线预览 */}
+                        <Paper sx={{ p: 2 }}>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                PDF 在线预览
+                            </Typography>
+                            <Divider sx={{ mb: 2 }} />
+                            <Box
+                                component="embed"
+                                src={`/api/book/${book.uuid}/pdf`}
+                                type="application/pdf"
+                                sx={{
+                                    width: '100%',
+                                    height: { xs: 420, md: 640 },
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    borderRadius: 1,
+                                }}
+                            />
+                        </Paper>
                     </Box>
                 ) : (
                     <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -402,6 +423,15 @@ export default function BookDetailDialog({ open, onClose, book, loading }: BookD
             </DialogContent>
 
             <DialogActions sx={{ px: 3, pb: 2 }}>
+                {book && !loading && (
+                    <Button
+                        variant="contained"
+                        startIcon={<CloudDownloadIcon />}
+                        onClick={() => onDownload(book.uuid, `/api/book/${book.uuid}/pdf`)}
+                    >
+                        下载 PDF
+                    </Button>
+                )}
                 <Button onClick={onClose} variant="outlined">
                     关闭
                 </Button>
