@@ -401,7 +401,7 @@ export default function BookDetailDialog({ open, onClose, book, loading, onDownl
                             <Divider sx={{ mb: 2 }} />
                             <Box
                                 component="embed"
-                                src={`/api/book/${book.uuid}/pdf`}
+                                src={`/api/book/${book.uuid}/pdf?preview=1`}
                                 type="application/pdf"
                                 sx={{
                                     width: '100%',
