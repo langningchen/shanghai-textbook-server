@@ -118,8 +118,8 @@ export function generateFriendlyFilename(book: Textbook): string {
 }
 
 function getGitHubUrl(file: string) {
-	return `https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books/${file}`;
-};
+	return `https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books/${file.slice(0, 2)}/${file}`;
+}
 export const getIndexUrl = () => getGitHubUrl(`bookcase.json`);
 export const getJsonUrl = (uuid: string) => getGitHubUrl(`${uuid}.json`);
 export const getPdfPrefix = (uuid: string) => getGitHubUrl(`${uuid}.pdf`);
