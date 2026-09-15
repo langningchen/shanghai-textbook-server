@@ -13,13 +13,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-export interface SemesterPhase {
+interface SemesterPhase {
 	semester_phase: string;
 	semester_phase_str: string;
 	semester_phase_code: string;
 }
 
-export interface GradeSemester {
+interface GradeSemester {
 	grade_level: string;
 	used_semester_phases: SemesterPhase[];
 	grade_level_code: string;

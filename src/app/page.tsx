@@ -57,12 +57,29 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { Textbook, FilterOptions } from "@/types/textbook";
 import {
 	filterBooks,
+	generateFriendlyFilename,
 	getGradeDisplayName,
+	getIndexUrl,
+	getJsonUrl,
+	getPdfPrefix,
 	getTermDisplayName,
 } from "@/utils/helpers";
 import BookCard from "@/components/BookCard";
 import BookFilter from "@/components/BookFilter";
 import BookDetailDialog from "@/components/BookDetailDialog";
+import { Card, CardContent, LinearProgress } from "@mui/material";
+
+interface BatchProgress {
+	current: number;
+	total: number;
+}
+interface DownloadingData {
+	title: string;
+	progress: {
+		current: number;
+		batch?: BatchProgress;
+	};
+}
 
 const theme = createTheme({
 	palette: {
@@ -89,7 +106,7 @@ export default function HomePage() {
 	const [filters, setFilters] = useState<FilterOptions>({});
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [downloading, setDownloading] = useState<string | null>(null);
+	const [downloading, setDownloading] = useState<DownloadingData | null>(null);
 	const [snackbar, setSnackbar] = useState({
 		open: false,
 		message: "",
@@ -136,18 +153,8 @@ export default function HomePage() {
 	const fetchBooks = async () => {
 		try {
 			setLoading(true);
-			const response = await fetch("/api/book");
-			const { success, data, error } = (await response.json()) as {
-				success: boolean;
-				data?: Textbook[];
-				error?: string;
-			};
-
-			if (success && data) {
-				setBooks(data);
-			} else {
-				setError(error || "获取数据失败");
-			}
+			const response = await fetch(getIndexUrl());
+			setBooks(await response.json());
 		} catch {
 			setError("网络错误，请检查连接");
 		} finally {
@@ -155,17 +162,120 @@ export default function HomePage() {
 		}
 	};
 
-	const handleDownload = (bookId: string, pdfPath: string, silent = false) => {
-		setDownloading(bookId);
+	const handleDownload = async (bookId: string, batch?: BatchProgress) => {
+		const downloadFailed = (message: string) => {
+			setDownloading(null);
+			setSnackbar({ open: true, message, severity: "error", });
+		};
 
+		const book = books.find((b) => b.uuid === bookId);
+		if (!book) {
+			return downloadFailed("下载失败，教材不存在");
+		}
+
+		setDownloading({ title: book.title, progress: { current: 0, batch } });
+		const prefix = getPdfPrefix(bookId);
+		const tryFetchUrls = async (suffix?: string): Promise<string | null> => {
+			const url = `${prefix}${suffix || ""}`;
+			const response = await fetch(url, { method: "HEAD" });
+			if (response.ok) {
+				return url;
+			}
+			return null;
+		};
+
+
+		const urls: string[] = [];
+		const firstUrl = await tryFetchUrls();
+		if (firstUrl) {
+			urls.push(firstUrl);
+		}
+		let index = 1;
+		while (true) {
+			const partUrl = await tryFetchUrls(`.${index}`);
+			if (partUrl) {
+				urls.push(partUrl);
+				index++;
+			} else {
+				break;
+			}
+		}
+		if (urls.length === 0) {
+			return downloadFailed("下载失败，文件不存在");
+		}
+
+		setDownloading({ title: book.title, progress: { current: 0, batch } });
+		const parts: Blob[] = [];
+		for (let i = 0; i < urls.length; i++) {
+			const url = urls[i];
+			try {
+				const response = await fetch(url);
+				if (!response.ok) {
+					return downloadFailed(`下载失败，文件不存在: ${url}`);
+				}
+
+				const contentLength = response.headers.get("content-length");
+				const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+
+				const reader = response.body?.getReader();
+				if (!reader) {
+					const blob = await response.blob();
+					parts.push(blob);
+					continue;
+				}
+
+				const chunks: Uint8Array[] = [];
+				let receivedBytes = 0;
+				let lastUpdateTime = 0;
+
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+
+					chunks.push(value);
+					receivedBytes += value.length;
+
+					const now = performance.now();
+					if (now - lastUpdateTime > 200) {
+						lastUpdateTime = now;
+						const currentProgress = totalBytes > 0 ? receivedBytes / totalBytes : 0;
+						setDownloading({
+							title: book.title,
+							progress: {
+								current: (i + currentProgress) / urls.length,
+								batch,
+							},
+						});
+					}
+				}
+
+				setDownloading({
+					title: book.title,
+					progress: {
+						current: (i + 1) / urls.length,
+						batch,
+					},
+				});
+
+				const partBlob = new Blob(chunks as BlobPart[]);
+				parts.push(partBlob);
+			} catch (error) {
+				return downloadFailed(`下载失败，网络错误: ${url}`);
+			}
+		}
+
+		const combinedBlob = new Blob(parts, { type: "application/pdf" });
+		const url = URL.createObjectURL(combinedBlob);
 		const link = document.createElement("a");
-		link.href = pdfPath;
+		link.href = url;
+		link.download = generateFriendlyFilename(book);
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
 
 		setDownloading(null);
-		if (!silent) {
+		if (!batch) {
 			setSnackbar({
 				open: true,
 				message: "下载已开始，请检查浏览器下载文件夹",
@@ -192,7 +302,7 @@ export default function HomePage() {
 		setDetailLoading(true);
 
 		try {
-			const response = await fetch(`/api/book/${bookId}/detail`);
+			const response = await fetch(getJsonUrl(bookId));
 			const result = (await response.json()) as {
 				success: boolean;
 				data?: Textbook;
@@ -252,7 +362,7 @@ export default function HomePage() {
 		setSelectedBookIds([]);
 	};
 
-	const handleBatchDownload = () => {
+	const handleBatchDownload = async () => {
 		if (selectedBookIds.length === 0) {
 			setSnackbar({
 				open: true,
@@ -261,16 +371,14 @@ export default function HomePage() {
 			});
 			return;
 		}
+		const batch: BatchProgress = {
+			current: 0,
+			total: selectedBookIds.length,
+		};
 
-		selectedBookIds.forEach((bookId) => {
-			handleDownload(bookId, `/api/book/${bookId}/pdf`, true);
-		});
-
-		setSnackbar({
-			open: true,
-			message: `已开始批量下载 ${selectedBookIds.length} 本教材`,
-			severity: "success",
-		});
+		for (let i = 0; i < selectedBookIds.length; i++) {
+			await handleDownload(selectedBookIds[i], { ...batch, current: i + 1 });
+		}
 	};
 
 	// Calculate pagination
@@ -338,7 +446,7 @@ export default function HomePage() {
 						共 {filteredBooks.length} 本教科书
 						{totalPages > 1 && (
 							<span>
-								{" "}
+
 								• 第 {currentPage} / {totalPages} 页
 							</span>
 						)}
@@ -479,7 +587,7 @@ export default function HomePage() {
 									onClick={handleBatchDownload}
 									disabled={selectedBookIds.length === 0}
 								>
-									批量下载（{selectedBookIds.length}）
+									批量下载 {selectedBookIds.length} 本
 								</Button>
 							)}
 						</Box>
@@ -582,12 +690,7 @@ export default function HomePage() {
 																size="small"
 																startIcon={<DownloadIcon />}
 																variant="contained"
-																onClick={() =>
-																	handleDownload(
-																		book.uuid,
-																		`/api/book/${book.uuid}/pdf`,
-																	)
-																}
+																onClick={() => handleDownload(book.uuid)}
 															>
 																下载
 															</Button>
@@ -628,8 +731,8 @@ export default function HomePage() {
 								{/* Pagination Info */}
 								<Box sx={{ textAlign: "center", mt: 2, mb: 2 }}>
 									<Typography variant="body2" color="text.secondary">
-										显示第 {startIndex + 1} -{" "}
-										{Math.min(endIndex, filteredBooks.length)} 本， 共{" "}
+										显示第 {startIndex + 1} -
+										{Math.min(endIndex, filteredBooks.length)} 本， 共
 										{filteredBooks.length} 本教科书
 									</Typography>
 								</Box>
@@ -666,12 +769,69 @@ export default function HomePage() {
 
 			{/* Download Backdrop */}
 			<Backdrop open={downloading !== null} sx={{ zIndex: 9999 }}>
-				<Box sx={{ textAlign: "center", color: "white" }}>
-					<CircularProgress color="inherit" />
-					<Typography variant="h6" sx={{ mt: 2 }}>
-						正在下载...
-					</Typography>
-				</Box>
+				{downloading && (
+					<Card
+						elevation={8}
+						sx={{
+							width: "50%",
+							borderRadius: 3,
+							textAlign: "center",
+						}}
+					>
+						<CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
+							<Typography
+								variant="h6"
+								component="div"
+								sx={{
+									fontWeight: 600,
+									mb: 2,
+									overflow: "hidden",
+									textOverflow: "ellipsis",
+									whiteSpace: "nowrap",
+								}}
+								title={downloading.title}
+							>
+								正在下载 {downloading.title}
+							</Typography>
+
+							<Box sx={{ width: "100%", mt: 1 }}>
+								<Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+									<Typography variant="body2" color="text.secondary">
+										下载进度
+									</Typography>
+									<Typography variant="body2" sx={{ fontWeight: "bold", color: "primary.main" }}>
+										{Math.round(downloading.progress.current * 100)}%
+									</Typography>
+								</Box>
+								<LinearProgress
+									variant="determinate"
+									value={downloading.progress.current * 100}
+									sx={{ height: 6, borderRadius: 3 }}
+								/>
+							</Box>
+
+							{downloading.progress.batch && (
+								<Box sx={{ width: "100%", mt: 2 }}>
+									<Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+										<Typography variant="body2" color="text.secondary">
+											批量进度
+										</Typography>
+										<Typography variant="body2" sx={{ fontWeight: "bold", color: "primary.main" }}>
+											{downloading.progress.batch.current} / {downloading.progress.batch.total}
+										</Typography>
+									</Box>
+									<LinearProgress
+										variant="determinate"
+										value={
+											(downloading.progress.batch.current / downloading.progress.batch.total) * 100
+										}
+										sx={{ height: 6, borderRadius: 3 }}
+									/>
+								</Box>
+							)}
+						</CardContent>
+					</Card>
+				)}
 			</Backdrop>
 
 			{/* Snackbar */}
@@ -690,4 +850,4 @@ export default function HomePage() {
 			</Snackbar>
 		</ThemeProvider>
 	);
-}
+};

@@ -34,7 +34,9 @@ import GitHubIcon from "@mui/icons-material/GitHub";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import { Textbook } from "@/types/textbook";
 import {
+	getCoverUrls,
 	getGradeDisplayName,
+	getJsonUrl,
 	getTermDisplayName,
 	getUseTypeDisplayName,
 } from "@/utils/helpers";
@@ -45,7 +47,7 @@ interface BookDetailDialogProps {
 	onClose: () => void;
 	book: Textbook | null;
 	loading: boolean;
-	onDownload: (bookId: string, pdfPath: string) => void;
+	onDownload: (bookId: string) => void;
 }
 
 const formatUpdateTime = (updateTime: string) => {
@@ -64,10 +66,6 @@ const formatUpdateTime = (updateTime: string) => {
 	}
 };
 
-const getGitHubUrl = (bookId: string) => {
-	return `https://github.com/langningchen/shanghai-textbook-data/blob/main/books/${bookId}.json`;
-};
-
 const getTextbookMaterialTypeDisplay = (type: string) => {
 	const typeMap: Record<string, string> = {
 		BASIC: "基础教材",
@@ -77,6 +75,30 @@ const getTextbookMaterialTypeDisplay = (type: string) => {
 	};
 	return typeMap[type] || type;
 };
+
+function LinkItem({ icon, label, url }: { icon: React.ReactNode; label: string; url: string; }) {
+	return <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+		{icon}
+		<Typography variant="body2" sx={{ mr: 1 }}>
+			<strong>{label}：</strong>
+		</Typography>
+		<MuiLink
+			href={url}
+			target="_blank"
+			rel="noopener noreferrer"
+			sx={{
+				display: "flex",
+				alignItems: "center",
+				gap: 0.5,
+				wordBreak: "break-all",
+				flex: 1,
+			}}
+		>
+			{url}
+			<OpenInNewIcon fontSize="small" />
+		</MuiLink>
+	</Box>;
+}
 
 export default function BookDetailDialog({
 	open,
@@ -157,7 +179,7 @@ export default function BookDetailDialog({
 										}}
 									>
 										<LazyImage
-											src={`/api/book/${book.uuid}/cover`}
+											src={getCoverUrls(book.uuid)}
 											alt={book.title}
 											width={200}
 											height={300}
@@ -258,11 +280,11 @@ export default function BookDetailDialog({
 											<strong>ISBN：</strong> {book.isbn}
 										</Typography>
 										<Typography variant="body2" color="text.secondary">
-											<strong>用书类型：</strong>{" "}
+											<strong>用书类型：</strong>
 											{getUseTypeDisplayName(book.use_type)}
 										</Typography>
 										<Typography variant="body2" color="text.secondary">
-											<strong>教材类型：</strong>{" "}
+											<strong>教材类型：</strong>
 											{getTextbookMaterialTypeDisplay(
 												book.textbook_material_type,
 											)}
@@ -271,7 +293,7 @@ export default function BookDetailDialog({
 											<strong>正文起始页：</strong> {book.text_start_page}
 										</Typography>
 										<Typography variant="body2" color="text.secondary">
-											<strong>状态：</strong>{" "}
+											<strong>状态：</strong>
 											{book.status === "1" ? "可用" : "不可用"}
 										</Typography>
 									</Box>
@@ -377,7 +399,7 @@ export default function BookDetailDialog({
 									<strong>用书类型：</strong> {book.use_type}
 								</Typography>
 								<Typography variant="body2" color="text.secondary">
-									<strong>当前学期：</strong>{" "}
+									<strong>当前学期：</strong>
 									{book.is_current_term === 1 ? "是" : "否"}
 								</Typography>
 								<Typography variant="body2" color="text.secondary">
@@ -387,7 +409,7 @@ export default function BookDetailDialog({
 									<strong>正文起始页：</strong> {book.text_start_page}
 								</Typography>
 								<Typography variant="body2" color="text.secondary">
-									<strong>更新时间：</strong>{" "}
+									<strong>更新时间：</strong>
 									{formatUpdateTime(book.update_time)}
 								</Typography>
 							</Box>
@@ -404,96 +426,22 @@ export default function BookDetailDialog({
 							</Typography>
 							<Divider sx={{ mb: 2 }} />
 							<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-									<CloudDownloadIcon color="primary" />
-									<Typography variant="body2" sx={{ mr: 1 }}>
-										<strong>课本数据文件：</strong>
-									</Typography>
-									<MuiLink
-										href={book.file_path}
-										target="_blank"
-										rel="noopener noreferrer"
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											gap: 0.5,
-											wordBreak: "break-all",
-											flex: 1,
-										}}
-									>
-										{book.file_path}
-										<OpenInNewIcon fontSize="small" />
-									</MuiLink>
-								</Box>
-
-								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-									<CloudDownloadIcon color="primary" />
-									<Typography variant="body2" sx={{ mr: 1 }}>
-										<strong>封面图片：</strong>
-									</Typography>
-									<MuiLink
-										href={book.cover_path}
-										target="_blank"
-										rel="noopener noreferrer"
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											gap: 0.5,
-											wordBreak: "break-all",
-											flex: 1,
-										}}
-									>
-										{book.cover_path}
-										<OpenInNewIcon fontSize="small" />
-									</MuiLink>
-								</Box>
-
-								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-									<GitHubIcon color="primary" />
-									<Typography variant="body2" sx={{ mr: 1 }}>
-										<strong>GitHub 源文件：</strong>
-									</Typography>
-									<MuiLink
-										href={getGitHubUrl(book.uuid)}
-										target="_blank"
-										rel="noopener noreferrer"
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											gap: 0.5,
-											wordBreak: "break-all",
-											flex: 1,
-										}}
-									>
-										{getGitHubUrl(book.uuid)}
-										<OpenInNewIcon fontSize="small" />
-									</MuiLink>
-								</Box>
+								<LinkItem
+									icon={<CloudDownloadIcon color="primary" />}
+									label="课本数据文件"
+									url={book.file_path}
+								/>
+								<LinkItem
+									icon={<CloudDownloadIcon color="primary" />}
+									label="封面图片"
+									url={book.cover_path}
+								/>
+								<LinkItem
+									icon={<GitHubIcon color="primary" />}
+									label="GitHub 元信息文件"
+									url={getJsonUrl(book.uuid)}
+								/>
 							</Box>
-						</Paper>
-
-						{/* PDF 在线预览 */}
-						<Paper sx={{ p: 2 }}>
-							<Typography
-								variant="h6"
-								gutterBottom
-								sx={{ fontWeight: 600, color: "primary.main" }}
-							>
-								PDF 在线预览
-							</Typography>
-							<Divider sx={{ mb: 2 }} />
-							<Box
-								component="embed"
-								src={`/api/book/${book.uuid}/pdf?preview=1`}
-								type="application/pdf"
-								sx={{
-									width: "100%",
-									height: { xs: 420, md: 640 },
-									border: "1px solid",
-									borderColor: "divider",
-									borderRadius: 1,
-								}}
-							/>
 						</Paper>
 					</Box>
 				) : (
@@ -510,7 +458,7 @@ export default function BookDetailDialog({
 					<Button
 						variant="contained"
 						startIcon={<CloudDownloadIcon />}
-						onClick={() => onDownload(book.uuid, `/api/book/${book.uuid}/pdf`)}
+						onClick={() => onDownload(book.uuid)}
 					>
 						下载 PDF
 					</Button>

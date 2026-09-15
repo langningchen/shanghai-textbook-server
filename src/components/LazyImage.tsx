@@ -23,7 +23,7 @@ import { SxProps, Theme } from "@mui/material/styles";
 import Image from "next/image";
 
 interface LazyImageProps {
-	src: string;
+	src: string | string[];
 	alt: string;
 	width?: number | string;
 	height?: number | string;
@@ -37,6 +37,7 @@ export default function LazyImage({
 	height = 320,
 	sx = {},
 }: LazyImageProps) {
+	const [imageIndex, setImageIndex] = useState(0);
 	const [imageLoaded, setImageLoaded] = useState(false);
 	const [imageError, setImageError] = useState(false);
 
@@ -50,7 +51,11 @@ export default function LazyImage({
 	};
 
 	const handleImageError = () => {
-		setImageError(true);
+		if (Array.isArray(src) && imageIndex < src.length - 1) {
+			setImageIndex(imageIndex + 1);
+		} else {
+			setImageError(true);
+		}
 	};
 
 	return (
@@ -92,9 +97,8 @@ export default function LazyImage({
 				</Box>
 			) : (
 				<>
-					{/* Skeleton 作为覆盖层，图片始终渲染，不用 display:none 隐藏图片 */}
 					<Image
-						src={src}
+						src={src[imageIndex]}
 						alt={alt}
 						fill
 						style={{

@@ -32,13 +32,15 @@ import {
 	getTermDisplayName,
 	getPublisherDisplayName,
 	getUseTypeDisplayName,
+	getCoverUrls,
+	getJsonUrl,
 } from "@/utils/helpers";
 import LazyImage from "./LazyImage";
 import BookDetailDialog from "./BookDetailDialog";
 
 interface BookCardProps {
 	book: Textbook;
-	onDownload: (bookId: string, pdfPath: string) => void;
+	onDownload: (bookId: string) => void;
 }
 
 export default function BookCard({ book, onDownload }: BookCardProps) {
@@ -46,28 +48,13 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
 	const [detailBook, setDetailBook] = useState<Textbook | null>(null);
 	const [detailLoading, setDetailLoading] = useState(false);
 
-	const handleDownload = () => {
-		onDownload(book.uuid, `/api/book/${book.uuid}/pdf`);
-	};
-
 	const handleShowDetail = async () => {
 		setDetailDialogOpen(true);
 		setDetailLoading(true);
 
 		try {
-			const response = await fetch(`/api/book/${book.uuid}/detail`);
-			const result = (await response.json()) as {
-				success: boolean;
-				data?: Textbook;
-				error?: string;
-			};
-
-			if (result.success && result.data) {
-				setDetailBook(result.data);
-			} else {
-				console.error("Failed to fetch book detail:", result.error);
-				setDetailBook(null);
-			}
+			const response = await fetch(getJsonUrl(book.uuid));
+			setDetailBook(await response.json());
 		} catch (error) {
 			console.error("Error fetching book detail:", error);
 			setDetailBook(null);
@@ -99,7 +86,7 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
 			>
 				<Box sx={{ position: "relative" }}>
 					<LazyImage
-						src={`/api/book/${book.uuid}/cover`}
+						src={getCoverUrls(book.uuid)}
 						alt={book.title}
 						height={360}
 						sx={{ borderRadius: "4px 4px 0 0" }}
@@ -157,7 +144,7 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
 					</Box>
 
 					<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-						<strong>出版社:</strong>{" "}
+						<strong>出版社:</strong>
 						{book.publisher ? getPublisherDisplayName(book.publisher) : "未知"}
 					</Typography>
 
@@ -192,7 +179,7 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
 						startIcon={<DownloadIcon />}
 						onClick={(e) => {
 							e.stopPropagation();
-							handleDownload();
+							onDownload(book.uuid);
 						}}
 						size="small"
 						sx={{ flex: 1 }}
