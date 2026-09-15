@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Langning Chen
+// Copyright (C) 2026 Langning Chen
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as
@@ -89,7 +89,7 @@ export class GitHubService {
 	 */
 	async getFirstAvailableFile(
 		paths: string[],
-	): Promise<{ path: string; content: Buffer } | null> {
+	): Promise<{ path: string; content: Buffer; } | null> {
 		for (const path of paths) {
 			try {
 				const content = await this.getFileContent(path);
@@ -106,8 +106,8 @@ export class GitHubService {
 	 */
 	async getAllAvailableFiles(
 		paths: string[],
-	): Promise<Array<{ path: string; content: Buffer }>> {
-		const results: Array<{ path: string; content: Buffer }> = [];
+	): Promise<Array<{ path: string; content: Buffer; }>> {
+		const results: Array<{ path: string; content: Buffer; }> = [];
 
 		for (const path of paths) {
 			try {

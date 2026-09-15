@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Langning Chen
+// Copyright (C) 2026 Langning Chen
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as
@@ -17,7 +17,7 @@ import { GitHubService } from "./github";
 import { Textbook } from "@/types/textbook";
 
 export class BookService {
-	constructor(private githubService: GitHubService) {}
+	constructor(private githubService: GitHubService) { }
 
 	/**
 	 * Get all books from the repository

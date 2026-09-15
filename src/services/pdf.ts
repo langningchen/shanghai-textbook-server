@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Langning Chen
+// Copyright (C) 2026 Langning Chen
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as
@@ -16,7 +16,7 @@
 import { GitHubService } from "./github";
 
 export class PDFService {
-	constructor(private githubService: GitHubService) {}
+	constructor(private githubService: GitHubService) { }
 
 	/**
 	 * Get PDF file for a book, handling both single files and multi-part files

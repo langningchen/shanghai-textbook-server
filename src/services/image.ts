@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Langning Chen
+// Copyright (C) 2026 Langning Chen
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as
@@ -22,7 +22,7 @@ export interface ImageResult {
 }
 
 export class ImageService {
-	constructor(private githubService: GitHubService) {}
+	constructor(private githubService: GitHubService) { }
 
 	/**
 	 * Get book cover image, automatically checking for different formats

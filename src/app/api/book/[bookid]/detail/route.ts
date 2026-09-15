@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Langning Chen
+// Copyright (C) 2026 Langning Chen
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as
@@ -21,7 +21,7 @@ import {
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: Promise<{ bookid: string }> },
+	{ params }: { params: Promise<{ bookid: string; }>; },
 ) {
 	try {
 		const { bookid } = await params;
