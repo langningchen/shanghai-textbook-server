@@ -34,13 +34,12 @@ import GitHubIcon from "@mui/icons-material/GitHub";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import { Textbook } from "@/types/textbook";
 import {
-	getCoverUrls,
 	getGradeDisplayName,
-	getJsonUrl,
 	getTermDisplayName,
 	getUseTypeDisplayName,
 } from "@/utils/helpers";
 import LazyImage from "./LazyImage";
+import { getCoverUrls, getJsonUrl } from "@/utils/url";
 
 interface BookDetailDialogProps {
 	open: boolean;

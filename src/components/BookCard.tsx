@@ -32,11 +32,10 @@ import {
 	getTermDisplayName,
 	getPublisherDisplayName,
 	getUseTypeDisplayName,
-	getCoverUrls,
-	getJsonUrl,
 } from "@/utils/helpers";
 import LazyImage from "./LazyImage";
 import BookDetailDialog from "./BookDetailDialog";
+import { getCoverUrls, getJsonUrl } from "@/utils/url";
 
 interface BookCardProps {
 	book: Textbook;

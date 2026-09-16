@@ -116,16 +116,3 @@ export function generateFriendlyFilename(book: Textbook): string {
 
 	return `${filename}.pdf`;
 }
-
-function getGitHubUrl(file: string) {
-	return `https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books/${file}`;
-}
-export const getIndexUrl = () => getGitHubUrl(`bookcase.json`);
-export const getJsonUrl = (uuid: string) => getGitHubUrl(`${uuid.slice(0, 2)}/${uuid}.json`);
-export const getPdfPrefix = (uuid: string) => getGitHubUrl(`${uuid.slice(0, 2)}/${uuid}.pdf`);
-export function getCoverUrls(uuid: string) {
-	return [
-		getGitHubUrl(`${uuid.slice(0, 2)}/${uuid}.jpg`),
-		getGitHubUrl(`${uuid.slice(0, 2)}/${uuid}.png`),
-	];
-};

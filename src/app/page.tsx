@@ -44,6 +44,7 @@ import Checkbox from "@mui/material/Checkbox";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Button from "@mui/material/Button";
+import Tooltip from "@mui/material/Tooltip";
 import SchoolIcon from "@mui/icons-material/School";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import GitHubIcon from "@mui/icons-material/GitHub";
@@ -51,6 +52,8 @@ import DownloadIcon from "@mui/icons-material/Download";
 import InfoIcon from "@mui/icons-material/Info";
 import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import ViewListIcon from "@mui/icons-material/ViewList";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import SpeedIcon from "@mui/icons-material/Speed";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 
@@ -59,14 +62,17 @@ import {
 	filterBooks,
 	generateFriendlyFilename,
 	getGradeDisplayName,
-	getIndexUrl,
-	getJsonUrl,
-	getPdfPrefix,
 	getTermDisplayName,
 } from "@/utils/helpers";
+import {
+	getIndexUrl,
+	getJsonUrl,
+	getPdfPrefix
+} from '@/utils/url';
 import BookCard from "@/components/BookCard";
 import BookFilter from "@/components/BookFilter";
 import BookDetailDialog from "@/components/BookDetailDialog";
+import SourceSwitchDialog from "@/components/SourceSwitchDialog";
 import { Card, CardContent, LinearProgress } from "@mui/material";
 
 interface BatchProgress {
@@ -119,13 +125,25 @@ export default function HomePage() {
 	const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 	const [detailBook, setDetailBook] = useState<Textbook | null>(null);
 	const [detailLoading, setDetailLoading] = useState(false);
+	const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
+	const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-	// 简化菜单状态
 	const menuOpen = Boolean(anchorEl);
 
 	// Pagination state
 	const [currentPage, setCurrentPage] = useState(1);
 	const booksPerPage = 50;
+
+	useEffect(() => {
+		if (loading) {
+			const timer = setTimeout(() => {
+				setLoadingTimeout(true);
+			}, 3000);
+			return () => clearTimeout(timer);
+		} else {
+			setLoadingTimeout(false);
+		}
+	}, [loading]);
 
 	// Fetch books from API
 	useEffect(() => {
@@ -153,10 +171,14 @@ export default function HomePage() {
 	const fetchBooks = async () => {
 		try {
 			setLoading(true);
+			setError(null);
 			const response = await fetch(getIndexUrl());
+			if (!response.ok) {
+				throw new Error("HTTP error " + response.status);
+			}
 			setBooks(await response.json());
 		} catch {
-			setError("网络错误，请检查连接");
+			setError("网络错误或数据源不可访问，请检查连接或更换源");
 		} finally {
 			setLoading(false);
 		}
@@ -177,13 +199,16 @@ export default function HomePage() {
 		const prefix = getPdfPrefix(bookId);
 		const tryFetchUrls = async (suffix?: string): Promise<string | null> => {
 			const url = `${prefix}${suffix || ""}`;
-			const response = await fetch(url, { method: "HEAD" });
-			if (response.ok) {
-				return url;
+			try {
+				const response = await fetch(url, { method: "HEAD" });
+				if (response.ok) {
+					return url;
+				}
+			} catch {
+				return null;
 			}
 			return null;
 		};
-
 
 		const urls: string[] = [];
 		const firstUrl = await tryFetchUrls();
@@ -259,7 +284,7 @@ export default function HomePage() {
 
 				const partBlob = new Blob(chunks as BlobPart[]);
 				parts.push(partBlob);
-			} catch (error) {
+			} catch {
 				return downloadFailed(`下载失败，网络错误: ${url}`);
 			}
 		}
@@ -404,13 +429,43 @@ export default function HomePage() {
 						alignItems: "center",
 						minHeight: "100vh",
 						flexDirection: "column",
+						px: 2,
 					}}
 				>
 					<CircularProgress size={60} />
-					<Typography variant="h6" sx={{ mt: 2 }}>
+					<Typography variant="h6" sx={{ mt: 3, fontWeight: 500 }}>
 						正在加载上海教科书数据...
 					</Typography>
+
+					{loadingTimeout && (
+						<Box
+							sx={{
+								mt: 3,
+								display: "flex",
+								flexDirection: "column",
+								alignItems: "center",
+								gap: 1.5,
+								animation: "fadeIn 0.5s ease-in-out",
+							}}
+						>
+							<Typography variant="body2" color="text.secondary">
+								响应较慢？当前数据源可能受网络波动影响
+							</Typography>
+							<Button
+								variant="contained"
+								color="warning"
+								startIcon={<SwapHorizIcon />}
+								onClick={() => setSourceDialogOpen(true)}
+							>
+								切换数据源
+							</Button>
+						</Box>
+					)}
 				</Box>
+				<SourceSwitchDialog
+					open={sourceDialogOpen}
+					onClose={() => setSourceDialogOpen(false)}
+				/>
 			</ThemeProvider>
 		);
 	}
@@ -419,14 +474,28 @@ export default function HomePage() {
 		return (
 			<ThemeProvider theme={theme}>
 				<CssBaseline />
-				<Container maxWidth="md" sx={{ py: 4 }}>
-					<Alert severity="error" sx={{ mb: 2 }}>
+				<Container maxWidth="md" sx={{ py: 6, textAlign: "center" }}>
+					<Alert severity="error" sx={{ mb: 3 }}>
 						{error}
 					</Alert>
-					<Typography variant="body1">
-						请刷新页面重试，或检查网络连接。
-					</Typography>
+					<Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
+						<Button
+							variant="contained"
+							color="primary"
+							startIcon={<SwapHorizIcon />}
+							onClick={() => setSourceDialogOpen(true)}
+						>
+							换源与测速
+						</Button>
+						<Button variant="outlined" onClick={fetchBooks}>
+							重试
+						</Button>
+					</Box>
 				</Container>
+				<SourceSwitchDialog
+					open={sourceDialogOpen}
+					onClose={() => setSourceDialogOpen(false)}
+				/>
 			</ThemeProvider>
 		);
 	}
@@ -446,11 +515,31 @@ export default function HomePage() {
 						共 {filteredBooks.length} 本教科书
 						{totalPages > 1 && (
 							<span>
-
-								• 第 {currentPage} / {totalPages} 页
+								{" "}• 第 {currentPage} / {totalPages} 页
 							</span>
 						)}
 					</Typography>
+
+					{/* 换源按钮 */}
+					<Tooltip title="切换数据源">
+						<Button
+							color="inherit"
+							variant="outlined"
+							size="small"
+							startIcon={<SpeedIcon />}
+							onClick={() => setSourceDialogOpen(true)}
+							sx={{
+								mr: 1.5,
+								borderColor: "rgba(255,255,255,0.6)",
+								"&:hover": {
+									borderColor: "#fff",
+									backgroundColor: "rgba(255,255,255,0.1)",
+								},
+							}}
+						>
+							换源
+						</Button>
+					</Tooltip>
 
 					{/* GitHub 仓库菜单 */}
 					<IconButton
@@ -748,6 +837,11 @@ export default function HomePage() {
 				book={detailBook}
 				loading={detailLoading}
 				onDownload={handleDownload}
+			/>
+
+			<SourceSwitchDialog
+				open={sourceDialogOpen}
+				onClose={() => setSourceDialogOpen(false)}
 			/>
 
 			{/* Scroll to Top */}
