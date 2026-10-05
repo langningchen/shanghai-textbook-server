@@ -53,7 +53,7 @@ export const SOURCE_PRESETS: SourcePreset[] = [
     {
         id: "statically",
         name: "Statically",
-        url: "https://cdn.statically.io/gh/langningchen/shanghai-textbook-data/main/books",
+        url: "https://cdn.statically.io/gh/langningchen/shanghai-textbook-data@main/books",
     },
 ];
 
