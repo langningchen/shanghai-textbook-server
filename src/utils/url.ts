@@ -22,7 +22,7 @@ export interface SourcePreset {
 }
 
 export const DEFAULT_PREFIX =
-    "https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books";
+    "https://testingcf.jsdelivr.net/gh/langningchen/shanghai-textbook-data@main/books";
 
 export const SOURCE_PRESETS: SourcePreset[] = [
     {
@@ -49,6 +49,11 @@ export const SOURCE_PRESETS: SourcePreset[] = [
         id: "ghproxy",
         name: "GHProxy",
         url: "https://ghfast.top/https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books",
+    },
+    {
+        id: "statically",
+        name: "Statically",
+        url: "https://cdn.statically.io/gh/langningchen/shanghai-textbook-data/main/books",
     },
 ];
 
