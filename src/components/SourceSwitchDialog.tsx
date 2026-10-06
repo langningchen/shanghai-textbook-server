@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -25,15 +25,12 @@ import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import TextField from "@mui/material/TextField";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Paper from "@mui/material/Paper";
 import CloseIcon from "@mui/icons-material/Close";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import SpeedIcon from "@mui/icons-material/Speed";
 
 import {
     SOURCE_PRESETS,
@@ -55,26 +52,50 @@ export default function SourceSwitchDialog({
     const [latencies, setLatencies] = useState<Record<string, number | null>>({});
     const [testingMap, setTestingMap] = useState<Record<string, boolean>>({});
 
-    useEffect(() => {
-        if (open) {
-            const current = getPrefix();
-            setSelectedSource(current);
-            testAllSources();
-        }
-    }, [open]);
+    const abortRef = useRef<boolean>(false);
 
     const testOneSource = useCallback(async (url: string) => {
         setTestingMap((prev) => ({ ...prev, [url]: true }));
-        const latency = await testSourceLatency(url);
-        setLatencies((prev) => ({ ...prev, [url]: latency }));
-        setTestingMap((prev) => ({ ...prev, [url]: false }));
+        try {
+            const latency = await testSourceLatency(url);
+            if (!abortRef.current) {
+                setLatencies((prev) => ({ ...prev, [url]: latency }));
+            }
+        } finally {
+            if (!abortRef.current) {
+                setTestingMap((prev) => ({ ...prev, [url]: false }));
+            }
+        }
     }, []);
 
-    const testAllSources = useCallback(() => {
-        SOURCE_PRESETS.forEach((preset) => {
-            testOneSource(preset.url);
+    const testAllSources = useCallback(async () => {
+        abortRef.current = true;
+        await Promise.resolve();
+        abortRef.current = false;
+        setLatencies({});
+        setTestingMap({});
+        let index = 0;
+        const workerCount = Math.min(3, SOURCE_PRESETS.length);
+        const workers = Array.from({ length: workerCount }, async () => {
+            while (index < SOURCE_PRESETS.length) {
+                const preset = SOURCE_PRESETS[index++];
+                if (abortRef.current) return;
+                await testOneSource(preset);
+            }
         });
+        await Promise.all(workers);
     }, [testOneSource]);
+
+    useEffect(() => {
+        if (open) {
+            abortRef.current = false;
+            const current = getPrefix();
+            setSelectedSource(current);
+            testAllSources();
+        } else {
+            abortRef.current = true;
+        }
+    }, [open, testAllSources]);
 
     const handleApply = () => {
         if (!selectedSource) return;
@@ -131,7 +152,6 @@ export default function SourceSwitchDialog({
             <Chip
                 size="small"
                 color={color}
-                icon={<SpeedIcon />}
                 label={`${latency} ms`}
                 onClick={(e) => {
                     e.stopPropagation();
@@ -143,7 +163,7 @@ export default function SourceSwitchDialog({
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+        <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
             <DialogTitle
                 sx={{
                     display: "flex",
@@ -181,21 +201,25 @@ export default function SourceSwitchDialog({
 
                 <RadioGroup
                     value={
-                        SOURCE_PRESETS.some((p) => p.url === selectedSource)
+                        SOURCE_PRESETS.some((p) => p === selectedSource)
                             ? selectedSource
                             : "custom"
                     }
                     onChange={(e) => setSelectedSource(e.target.value)}
+                    sx={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                        gap: 1,
+                    }}
                 >
                     {SOURCE_PRESETS.map((preset) => {
-                        const isSelected = selectedSource === preset.url;
+                        const isSelected = selectedSource === preset;
+                        const labelText = preset || "GitHub 官方";
                         return (
                             <Paper
-                                key={preset.id}
+                                key={preset}
                                 variant="outlined"
                                 sx={{
-                                    p: 1.5,
-                                    mb: 1.5,
                                     borderRadius: 2,
                                     borderColor: isSelected ? "primary.main" : "divider",
                                     backgroundColor: isSelected
@@ -206,34 +230,38 @@ export default function SourceSwitchDialog({
                                     alignItems: "center",
                                     justifyContent: "space-between",
                                 }}
-                                onClick={() => setSelectedSource(preset.url)}
+                                onClick={() => setSelectedSource(preset)}
                             >
-                                <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        minWidth: 0,
+                                    }}
+                                >
                                     <Radio
                                         checked={isSelected}
-                                        value={preset.url}
+                                        value={preset}
                                         name="source-radio"
                                         size="small"
                                     />
-                                    <Box sx={{ ml: 0.5 }}>
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                            {preset.name}
-                                        </Typography>
+                                    <Tooltip title={labelText} disableInteractive>
                                         <Typography
-                                            variant="caption"
-                                            color="text.secondary"
+                                            variant="subtitle2"
+                                            noWrap
                                             sx={{
-                                                display: "block",
-                                                wordBreak: "break-all",
-                                                fontSize: "0.75rem",
+                                                fontWeight: "bold",
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                                whiteSpace: "nowrap",
                                             }}
                                         >
-                                            {preset.url}
+                                            {labelText}
                                         </Typography>
-                                    </Box>
+                                    </Tooltip>
                                 </Box>
-                                <Box sx={{ ml: 1, flexShrink: 0 }}>
-                                    {renderLatencyChip(preset.url)}
+                                <Box sx={{ mx: 1, flexShrink: 0 }}>
+                                    {renderLatencyChip(preset)}
                                 </Box>
                             </Paper>
                         );

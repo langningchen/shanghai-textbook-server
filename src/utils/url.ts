@@ -15,54 +15,83 @@
 
 "use client";
 
-export interface SourcePreset {
-    id: string;
-    name: string;
-    url: string;
-}
-
-export const DEFAULT_PREFIX =
-    "https://testingcf.jsdelivr.net/gh/langningchen/shanghai-textbook-data@main/books";
-
-export const SOURCE_PRESETS: SourcePreset[] = [
-    {
-        id: "github-raw",
-        name: "GitHub 官方源",
-        url: "https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books",
-    },
-    {
-        id: "jsdelivr",
-        name: "jsDelivr CDN",
-        url: "https://cdn.jsdelivr.net/gh/langningchen/shanghai-textbook-data@main/books",
-    },
-    {
-        id: "jsdelivr-fastly",
-        name: "jsDelivr CDN (Fastly)",
-        url: "https://fastly.jsdelivr.net/gh/langningchen/shanghai-textbook-data@main/books",
-    },
-    {
-        id: "jsdelivr-cloudflare",
-        name: "jsDelivr CDN (Cloudflare)",
-        url: "https://testingcf.jsdelivr.net/gh/langningchen/shanghai-textbook-data@main/books",
-    },
-    {
-        id: "ghproxy",
-        name: "GHProxy",
-        url: "https://ghfast.top/https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books",
-    },
-    {
-        id: "statically",
-        name: "Statically",
-        url: "https://cdn.statically.io/gh/langningchen/shanghai-textbook-data@main/books",
-    },
+export const DEFAULT_PREFIX = "";
+export const GITHUB_MIDDLE = "https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books";
+export const SOURCE_PRESETS = [
+    "",
+    "https://777.z321.cc.cd/",
+    "https://axisnow.gh-proxy.org/",
+    "https://cdn.akaere.online/",
+    "https://cdn.gh-proxy.org/",
+    "https://down.mxw.qzz.io/",
+    "https://down.mxw.xx.kg/",
+    "https://fastgit.cc/",
+    "https://g.blfrp.cn/",
+    "https://g.z321.cc.cd/",
+    "https://getgit.love8yun.eu.org/",
+    "https://gg.z321.cc.cd/",
+    "https://ggg.clwap.dpdns.org/",
+    "https://gh-proxy.com/",
+    "https://gh-proxy.org/",
+    "https://gh.07150721.xyz/",
+    "https://gh.198962.xyz/",
+    "https://gh.1k.ink/",
+    "https://gh.39.al/",
+    "https://gh.996986.xyz/",
+    "https://gh.acmsz.top/",
+    "https://gh.chjina.com/",
+    "https://gh.halonice.com/",
+    "https://gh.inkchills.cn/",
+    "https://gh.jjj.gv.uy/",
+    "https://gh.llkk.cc/",
+    "https://gh.monlor.com/",
+    "https://gh.noki.eu.org/",
+    "https://gh.noki.icu/",
+    "https://gh.nxnow.top/",
+    "https://gh.padao.fun/",
+    "https://gh.qninq.cn/",
+    "https://gh.sixyin.com/",
+    "https://ghfast.top/",
+    "https://ghfile.geekertao.top/",
+    "https://ghm.078465.xyz/",
+    "https://ghp.keleyaa.com/",
+    "https://ghproxy.053000.xyz/",
+    "https://ghproxy.imciel.com/",
+    "https://ghproxy.mirror.skybyte.me/",
+    "https://ghproxy.monkeyray.net/",
+    "https://ghproxy.net/",
+    "https://ghproxy.xzhouqd.com/",
+    "https://git.669966.xyz/",
+    "https://git.820828.xyz/",
+    "https://git.951959483.xyz/",
+    "https://git.yylx.win/",
+    "https://github.1ms.xx.kg/",
+    "https://github.788787.xyz/",
+    "https://github.880824.xyz/",
+    "https://github.boringhex.top/",
+    "https://github.cnxiaobai.com/",
+    "https://github.crdz.eu.org/",
+    "https://github.ednovas.xyz/",
+    "https://github.ihnic.com/",
+    "https://github.lsdfxdk.nyc.mn/",
+    "https://github.mlmle.cn/",
+    "https://github.mxw.qzz.io/",
+    "https://gp.871201.xyz/",
+    "https://hub.ddayh.com/",
+    "https://jiashu.1win.eu.org/",
+    "https://js.jiangss.shop/",
+    "https://proxy.baguoyuyan.com/",
+    "https://tvv.tw/",
+    "https://v4.gh-proxy.org/",
+    "https://v6.gh-proxy.org/",
 ];
 
 export function getPrefix(): string {
-    return localStorage.getItem("githubPrefix") || DEFAULT_PREFIX;
+    return (localStorage.getItem("githubProxyPrefix") || DEFAULT_PREFIX) + GITHUB_MIDDLE;
 }
 
 export function setPrefix(newPrefix: string) {
-    localStorage.setItem("githubPrefix", newPrefix.trim());
+    localStorage.setItem("githubProxyPrefix", newPrefix.trim());
 }
 
 export function changePrefix(newPrefix: string) {
@@ -91,7 +120,7 @@ export function getCoverUrls(uuid: string) {
 }
 
 export async function testSourceLatency(baseUrl: string): Promise<number> {
-    const testUrl = `${baseUrl}/bookcase.json?_t=${Date.now()}`;
+    const testUrl = `${baseUrl}${GITHUB_MIDDLE}/bookcase.json?_t=${Date.now()}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
     const startTime = performance.now();
