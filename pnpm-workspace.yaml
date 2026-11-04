@@ -3,3 +3,5 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   workerd: true
+patchedDependencies:
+  '@mui/x-data-grid@9.17.0': patches/@mui__x-data-grid@9.17.0.patch

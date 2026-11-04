@@ -34,10 +34,27 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 
 import {
     SOURCE_PRESETS,
-    getPrefix,
+    getSourcePrefix,
     changePrefix,
     testSourceLatency,
 } from "@/utils/url";
+
+interface SourceMeasurement {
+    first: number;
+    samples: number[];
+    attempts: number;
+}
+
+const median = (samples: number[]) => {
+    if (!samples.length) return -1;
+    const sorted = [...samples].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return Math.round(
+        sorted.length % 2
+            ? sorted[middle]
+            : (sorted[middle - 1] + sorted[middle]) / 2,
+    );
+};
 
 interface SourceSwitchDialogProps {
     open: boolean;
@@ -48,72 +65,116 @@ export default function SourceSwitchDialog({
     open,
     onClose,
 }: SourceSwitchDialogProps) {
-    const [selectedSource, setSelectedSource] = useState<string>("");
-    const [latencies, setLatencies] = useState<Record<string, number | null>>({});
+    const [selectedSource, setSelectedSource] =
+        useState<string>(getSourcePrefix);
+    const [measurements, setMeasurements] = useState<
+        Record<string, SourceMeasurement>
+    >({});
     const [testingMap, setTestingMap] = useState<Record<string, boolean>>({});
+    const [testingAll, setTestingAll] = useState(false);
+    const runRef = useRef<AbortController | null>(null);
 
-    const abortRef = useRef<boolean>(false);
-
-    const testOneSource = useCallback(async (url: string) => {
-        setTestingMap((prev) => ({ ...prev, [url]: true }));
-        try {
-            const latency = await testSourceLatency(url);
-            if (!abortRef.current) {
-                setLatencies((prev) => ({ ...prev, [url]: latency }));
+    const testOneSource = useCallback(
+        async (
+            url: string,
+            controller: AbortController,
+            rounds = 1,
+            initial?: SourceMeasurement,
+        ) => {
+            if (controller.signal.aborted) return;
+            setTestingMap((prev) => ({ ...prev, [url]: true }));
+            const result: SourceMeasurement = initial
+                ? { ...initial, samples: [...initial.samples] }
+                : { first: -1, samples: [], attempts: 0 };
+            for (let round = 0; round < rounds; round++) {
+                const latency = await testSourceLatency(url, controller.signal);
+                if (controller.signal.aborted) return;
+                if (result.attempts === 0) result.first = latency;
+                result.attempts++;
+                if (latency >= 0) result.samples.push(latency);
             }
-        } finally {
-            if (!abortRef.current) {
+            if (!controller.signal.aborted) {
+                setMeasurements((prev) => ({ ...prev, [url]: result }));
                 setTestingMap((prev) => ({ ...prev, [url]: false }));
             }
-        }
-    }, []);
+            return result;
+        },
+        [],
+    );
 
     const testAllSources = useCallback(async () => {
-        abortRef.current = true;
-        await Promise.resolve();
-        abortRef.current = false;
-        setLatencies({});
+        runRef.current?.abort();
+        const controller = new AbortController();
+        runRef.current = controller;
+        setMeasurements({});
         setTestingMap({});
+        setTestingAll(true);
+        const initialResults = new Map<string, SourceMeasurement>();
         let index = 0;
-        const workerCount = Math.min(3, SOURCE_PRESETS.length);
-        const workers = Array.from({ length: workerCount }, async () => {
-            while (index < SOURCE_PRESETS.length) {
-                const preset = SOURCE_PRESETS[index++];
-                if (abortRef.current) return;
-                await testOneSource(preset);
-            }
-        });
+        const workers = Array.from(
+            { length: Math.min(8, SOURCE_PRESETS.length) },
+            async () => {
+                while (
+                    index < SOURCE_PRESETS.length &&
+                    !controller.signal.aborted
+                ) {
+                    const source = SOURCE_PRESETS[index++];
+                    const result = await testOneSource(source, controller);
+                    if (result) initialResults.set(source, result);
+                }
+            },
+        );
         await Promise.all(workers);
+        if (controller.signal.aborted) return;
+        // Retest only the fastest candidates, retaining their first-connection sample.
+        const candidates = [...initialResults.entries()]
+            .filter(([, result]) => result.samples.length > 0)
+            .sort((a, b) => median(a[1].samples) - median(b[1].samples))
+            .slice(0, 5);
+        index = 0;
+        await Promise.all(
+            Array.from({ length: Math.min(3, candidates.length) }, async () => {
+                while (
+                    index < candidates.length &&
+                    !controller.signal.aborted
+                ) {
+                    const [source, initial] = candidates[index++];
+                    await testOneSource(source, controller, 2, initial);
+                }
+            }),
+        );
+        if (!controller.signal.aborted) setTestingAll(false);
     }, [testOneSource]);
 
     useEffect(() => {
-        if (open) {
-            abortRef.current = false;
-            const current = getPrefix();
-            setSelectedSource(current);
-            testAllSources();
-        } else {
-            abortRef.current = true;
-        }
+        if (!open) return;
+        // Schedule probes after mounting so Strict Mode can clean up before requests start.
+        const timer = setTimeout(() => void testAllSources(), 0);
+        return () => {
+            clearTimeout(timer);
+            runRef.current?.abort();
+        };
     }, [open, testAllSources]);
 
+    const retestSource = (url: string) => {
+        if (testingAll || testingMap[url]) return;
+        if (!runRef.current || runRef.current.signal.aborted)
+            runRef.current = new AbortController();
+        void testOneSource(url, runRef.current, 3);
+    };
+
     const handleApply = () => {
-        if (!selectedSource) return;
-        changePrefix(selectedSource);
+        if (SOURCE_PRESETS.includes(selectedSource))
+            changePrefix(selectedSource);
     };
 
     const renderLatencyChip = (url: string) => {
         const isTesting = testingMap[url];
-        const latency = latencies[url];
+        const measurement = measurements[url];
+        const latency = measurement ? median(measurement.samples) : undefined;
 
         if (isTesting) {
-            return (
-                <Chip
-                    size="small"
-                    label="测速中..."
-                    variant="outlined"
-                />
-            );
+            return <Chip size="small" label="测速中..." variant="outlined" />;
         }
 
         if (latency === undefined || latency === null) {
@@ -123,8 +184,9 @@ export default function SourceSwitchDialog({
                     label="未测速"
                     onClick={(e) => {
                         e.stopPropagation();
-                        testOneSource(url);
+                        retestSource(url);
                     }}
+                    disabled={testingAll}
                     clickable
                 />
             );
@@ -138,8 +200,9 @@ export default function SourceSwitchDialog({
                     label="不可用"
                     onClick={(e) => {
                         e.stopPropagation();
-                        testOneSource(url);
+                        retestSource(url);
                     }}
+                    disabled={testingAll}
                     clickable
                 />
             );
@@ -149,51 +212,86 @@ export default function SourceSwitchDialog({
             latency < 300 ? "success" : latency < 800 ? "warning" : "error";
 
         return (
-            <Chip
-                size="small"
-                color={color}
-                label={`${latency} ms`}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    testOneSource(url);
-                }}
-                clickable
-            />
+            <Tooltip
+                title={`首次：${measurement!.first >= 0 ? `${measurement!.first} ms` : "失败"}；成功 ${measurement!.samples.length}/${measurement!.attempts} 次`}
+            >
+                <Chip
+                    size="small"
+                    color={color}
+                    label={`${latency} ms${measurement!.attempts > 1 ? ` · ${measurement!.samples.length}/${measurement!.attempts}` : ""}`}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        retestSource(url);
+                    }}
+                    disabled={testingAll}
+                    clickable
+                />
+            </Tooltip>
         );
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="xl"
+            fullWidth
+            slotProps={{
+                paper: {
+                    sx: {
+                        m: { xs: 1, sm: 4 },
+                        width: {
+                            xs: "calc(100% - 16px)",
+                            sm: "calc(100% - 64px)",
+                        },
+                        maxHeight: {
+                            xs: "calc(100dvh - 16px)",
+                            sm: "calc(100% - 64px)",
+                        },
+                    },
+                },
+            }}
+        >
             <DialogTitle
                 sx={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                     pb: 1,
+                    px: { xs: 2, sm: 3 },
                 }}
             >
-                <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+                <Typography
+                    variant="h6"
+                    component="div"
+                    sx={{ fontWeight: 600 }}
+                >
                     切换数据源
                 </Typography>
-                <IconButton onClick={onClose} size="small" sx={{ color: "grey.500" }}>
+                <IconButton
+                    aria-label="关闭数据源设置"
+                    onClick={onClose}
+                    sx={{ color: "grey.500" }}
+                >
                     <CloseIcon />
                 </IconButton>
             </DialogTitle>
 
-            <DialogContent dividers>
+            <DialogContent dividers sx={{ px: { xs: 1.5, sm: 3 } }}>
                 <Box
                     sx={{
                         display: "flex",
-                        justifyContent: "space-between",
+                        justifyContent: "flex-end",
                         alignItems: "center",
-                        mb: 2,
+                        mb: 1,
                     }}
                 >
-                    <Typography variant="body2" color="text.secondary">
-                        若下载慢或封面加载失败，请切换至延迟更低的源。
-                    </Typography>
                     <Tooltip title="全部重新测速">
-                        <IconButton size="small" color="primary" onClick={testAllSources}>
+                        <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => void testAllSources()}
+                        >
                             <RefreshIcon />
                         </IconButton>
                     </Tooltip>
@@ -208,7 +306,10 @@ export default function SourceSwitchDialog({
                     onChange={(e) => setSelectedSource(e.target.value)}
                     sx={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                        gridTemplateColumns: {
+                            xs: "minmax(0, 1fr)",
+                            sm: "repeat(auto-fill, minmax(240px, 1fr))",
+                        },
                         gap: 1,
                     }}
                 >
@@ -221,7 +322,9 @@ export default function SourceSwitchDialog({
                                 variant="outlined"
                                 sx={{
                                     borderRadius: 2,
-                                    borderColor: isSelected ? "primary.main" : "divider",
+                                    borderColor: isSelected
+                                        ? "primary.main"
+                                        : "divider",
                                     backgroundColor: isSelected
                                         ? "action.selected"
                                         : "background.paper",
@@ -237,15 +340,22 @@ export default function SourceSwitchDialog({
                                         display: "flex",
                                         alignItems: "center",
                                         minWidth: 0,
+                                        flex: 1,
                                     }}
                                 >
                                     <Radio
                                         checked={isSelected}
                                         value={preset}
                                         name="source-radio"
+                                        slotProps={{
+                                            input: { "aria-label": labelText },
+                                        }}
                                         size="small"
                                     />
-                                    <Tooltip title={labelText} disableInteractive>
+                                    <Tooltip
+                                        title={labelText}
+                                        disableInteractive
+                                    >
                                         <Typography
                                             variant="subtitle2"
                                             noWrap
@@ -269,14 +379,21 @@ export default function SourceSwitchDialog({
                 </RadioGroup>
             </DialogContent>
 
-            <DialogActions sx={{ px: 3, py: 2 }}>
+            <DialogActions
+                sx={{
+                    px: { xs: 1.5, sm: 3 },
+                    py: 2,
+                    pb: "max(16px, env(safe-area-inset-bottom))",
+                    "& .MuiButton-root": {
+                        minHeight: { xs: 44, sm: "auto" },
+                        flex: { xs: 1, sm: "initial" },
+                    },
+                }}
+            >
                 <Button onClick={onClose} variant="outlined" color="inherit">
                     取消
                 </Button>
-                <Button
-                    onClick={handleApply}
-                    variant="contained"
-                >
+                <Button onClick={handleApply} variant="contained">
                     切换
                 </Button>
             </DialogActions>

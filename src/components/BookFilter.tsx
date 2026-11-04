@@ -51,7 +51,12 @@ export default function BookFilter({
 
 	return (
 		<Card sx={{ mb: 3 }}>
-			<CardContent>
+			<CardContent
+				sx={{
+					p: { xs: 1.5, sm: 2 },
+					"&:last-child": { pb: { xs: 1.5, sm: 2 } },
+				}}
+			>
 				<Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
 					<FilterIcon sx={{ mr: 1, color: "primary.main" }} />
 					<Typography variant="h6" component="h2">
@@ -74,16 +79,21 @@ export default function BookFilter({
 					sx={{
 						display: "grid",
 						gridTemplateColumns: {
-							xs: "repeat(1, 1fr)",
+							xs: "repeat(2, minmax(0, 1fr))",
 							sm: "repeat(2, 1fr)",
 							md: "repeat(3, 1fr)",
 							lg: "repeat(6, 1fr)",
 						},
-						gap: 2,
+						gap: { xs: 1.5, sm: 2 },
+						"& > *": { minWidth: 0 },
+						"& .MuiInputBase-input": {
+							fontSize: { xs: "1rem", sm: "0.875rem" },
+						},
 					}}
 				>
 					<TextField
 						fullWidth
+						sx={{ gridColumn: { xs: "1 / -1", sm: "auto" } }}
 						label="搜索"
 						placeholder="书名、科目..."
 						value={filters.search || ""}

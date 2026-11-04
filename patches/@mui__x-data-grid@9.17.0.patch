@@ -1,0 +1,73 @@
+diff --git a/DataGrid/useDataGridProps.js b/DataGrid/useDataGridProps.js
+index 3899da0ba2b7514ea03bf1383bab41034014c21e..66d2ce276b91ca08228d8d9b261376a7636f1786 100644
+--- a/DataGrid/useDataGridProps.js
++++ b/DataGrid/useDataGridProps.js
+@@ -15,7 +15,7 @@ var _defaultGridSlotsComponents = require("../constants/defaultGridSlotsComponen
+ var _utils = require("../internals/utils");
+ var _dataGridPropsDefaultValues = require("../constants/dataGridPropsDefaultValues");
+ const DATA_GRID_FORCED_PROPS = {
+-  disableMultipleColumnsFiltering: true,
++  disableMultipleColumnsFiltering: false,
+   disableMultipleColumnsSorting: true,
+   throttleRowsMs: undefined,
+   hideFooterRowCount: false,
+diff --git a/DataGrid/useDataGridProps.mjs b/DataGrid/useDataGridProps.mjs
+index 7a84c00016fdb75fbc4b762d01e86fabd1898514..d664d170cc6acce946abfba4dd298dd28b1b7ebf 100644
+--- a/DataGrid/useDataGridProps.mjs
++++ b/DataGrid/useDataGridProps.mjs
+@@ -7,7 +7,7 @@ import { DATA_GRID_DEFAULT_SLOTS_COMPONENTS } from "../constants/defaultGridSlot
+ import { computeSlots } from "../internals/utils/index.mjs";
+ import { DATA_GRID_PROPS_DEFAULT_VALUES } from "../constants/dataGridPropsDefaultValues.mjs";
+ const DATA_GRID_FORCED_PROPS = {
+-  disableMultipleColumnsFiltering: true,
++  disableMultipleColumnsFiltering: false,
+   disableMultipleColumnsSorting: true,
+   throttleRowsMs: undefined,
+   hideFooterRowCount: false,
+diff --git a/hooks/features/pagination/gridPaginationUtils.js b/hooks/features/pagination/gridPaginationUtils.js
+index 14f147e8212c23c3680663c58a45d79a764c3b7e..28135dfd109d136ca351e7c12835f5344173cbc6 100644
+--- a/hooks/features/pagination/gridPaginationUtils.js
++++ b/hooks/features/pagination/gridPaginationUtils.js
+@@ -7,7 +7,7 @@ Object.defineProperty(exports, "__esModule", {
+ exports.throwIfPageSizeExceedsTheLimit = exports.getValidPage = exports.getPageCount = exports.getDefaultGridPaginationModel = exports.defaultPageSize = void 0;
+ var _formatErrorMessage2 = _interopRequireDefault(require("@mui/x-internals/formatErrorMessage"));
+ var _signature = require("../../../constants/signature");
+-const MAX_PAGE_SIZE = 100;
++const MAX_PAGE_SIZE = 500;
+ const defaultPageSize = autoPageSize => autoPageSize ? 0 : 100;
+ exports.defaultPageSize = defaultPageSize;
+ const getPageCount = (rowCount, pageSize, page) => {
+@@ -35,8 +35,8 @@ const getValidPage = (page, pageCount = 0) => {
+ exports.getValidPage = getValidPage;
+ const throwIfPageSizeExceedsTheLimit = (pageSize, signatureProp) => {
+   if (signatureProp === _signature.GridSignature.DataGrid && pageSize > MAX_PAGE_SIZE) {
+-    throw new Error(process.env.NODE_ENV !== "production" ? `MUI X: \`pageSize\` cannot exceed 100 in the MIT version of the DataGrid.
+-You need to upgrade to DataGridPro or DataGridPremium component to unlock this feature.` : (0, _formatErrorMessage2.default)(83));
++    throw new Error(process.env.NODE_ENV !== "production" ? `MUI X: \`pageSize\` cannot exceed 500 in this project build of the DataGrid.
++Choose a page size of 500 or less.` : (0, _formatErrorMessage2.default)(83));
+   }
+ };
+ exports.throwIfPageSizeExceedsTheLimit = throwIfPageSizeExceedsTheLimit;
+\ No newline at end of file
+diff --git a/hooks/features/pagination/gridPaginationUtils.mjs b/hooks/features/pagination/gridPaginationUtils.mjs
+index 0fad4a575a5bfee914af83e7bfcd94aeba9fa0f9..b7651e3d60fcd8b6197f41a55eb461a00600165e 100644
+--- a/hooks/features/pagination/gridPaginationUtils.mjs
++++ b/hooks/features/pagination/gridPaginationUtils.mjs
+@@ -1,6 +1,6 @@
+ import _formatErrorMessage from "@mui/x-internals/formatErrorMessage";
+ import { GridSignature } from "../../../constants/signature.mjs";
+-const MAX_PAGE_SIZE = 100;
++const MAX_PAGE_SIZE = 500;
+ export const defaultPageSize = autoPageSize => autoPageSize ? 0 : 100;
+ export const getPageCount = (rowCount, pageSize, page) => {
+   if (pageSize > 0 && rowCount > 0) {
+@@ -24,7 +24,7 @@ export const getValidPage = (page, pageCount = 0) => {
+ };
+ export const throwIfPageSizeExceedsTheLimit = (pageSize, signatureProp) => {
+   if (signatureProp === GridSignature.DataGrid && pageSize > MAX_PAGE_SIZE) {
+-    throw new Error(process.env.NODE_ENV !== "production" ? `MUI X: \`pageSize\` cannot exceed 100 in the MIT version of the DataGrid.
+-You need to upgrade to DataGridPro or DataGridPremium component to unlock this feature.` : _formatErrorMessage(83));
++    throw new Error(process.env.NODE_ENV !== "production" ? `MUI X: \`pageSize\` cannot exceed 500 in this project build of the DataGrid.
++Choose a page size of 500 or less.` : _formatErrorMessage(83));
+   }
+ };

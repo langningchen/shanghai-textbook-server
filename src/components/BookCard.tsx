@@ -15,7 +15,6 @@
 
 "use client";
 
-import { useState } from "react";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CardActions from "@mui/material/CardActions";
@@ -34,44 +33,27 @@ import {
 	getUseTypeDisplayName,
 } from "@/utils/helpers";
 import LazyImage from "./LazyImage";
-import BookDetailDialog from "./BookDetailDialog";
-import { getCoverUrls, getJsonUrl } from "@/utils/url";
+import { getCoverUrls } from "@/utils/url";
 
 interface BookCardProps {
 	book: Textbook;
 	onDownload: (bookId: string) => void;
+	onShowDetail: (bookId: string) => void;
 }
 
-export default function BookCard({ book, onDownload }: BookCardProps) {
-	const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-	const [detailBook, setDetailBook] = useState<Textbook | null>(null);
-	const [detailLoading, setDetailLoading] = useState(false);
-
-	const handleShowDetail = async () => {
-		setDetailDialogOpen(true);
-		setDetailLoading(true);
-
-		try {
-			const response = await fetch(getJsonUrl(book.uuid));
-			setDetailBook(await response.json());
-		} catch (error) {
-			console.error("Error fetching book detail:", error);
-			setDetailBook(null);
-		} finally {
-			setDetailLoading(false);
-		}
-	};
-
-	const handleCloseDetail = () => {
-		setDetailDialogOpen(false);
-		setDetailBook(null);
-	};
+export default function BookCard({
+	book,
+	onDownload,
+	onShowDetail,
+}: BookCardProps) {
+	const handleShowDetail = () => onShowDetail(book.uuid);
 
 	return (
 		<>
 			<Card
 				sx={{
 					height: "100%",
+					minWidth: 0,
 					display: "flex",
 					flexDirection: "column",
 					transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
@@ -88,7 +70,7 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
 						src={getCoverUrls(book.uuid)}
 						alt={book.title}
 						height={360}
-						sx={{ borderRadius: "4px 4px 0 0" }}
+						sx={{ borderRadius: "4px 4px 0 0", height: { xs: 240, sm: 360 } }}
 					/>
 					{book.is_current_term === 1 && (
 						<Chip
@@ -104,7 +86,14 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
 					)}
 				</Box>
 
-				<CardContent sx={{ flexGrow: 1, pb: 1 }}>
+				<CardContent
+					sx={{
+						flexGrow: 1,
+						p: { xs: 1.5, sm: 2 },
+						pb: 1,
+						overflowWrap: "anywhere",
+					}}
+				>
 					<Tooltip title={book.title} placement="top">
 						<Typography
 							variant="h6"
@@ -169,7 +158,7 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
 							handleShowDetail();
 						}}
 						size="small"
-						sx={{ flex: 1 }}
+						sx={{ flex: 1, minHeight: { xs: 44, sm: "auto" } }}
 					>
 						详情
 					</Button>
@@ -181,20 +170,12 @@ export default function BookCard({ book, onDownload }: BookCardProps) {
 							onDownload(book.uuid);
 						}}
 						size="small"
-						sx={{ flex: 1 }}
+						sx={{ flex: 1, minHeight: { xs: 44, sm: "auto" } }}
 					>
 						下载
 					</Button>
 				</CardActions>
 			</Card>
-
-			<BookDetailDialog
-				open={detailDialogOpen}
-				onClose={handleCloseDetail}
-				book={detailBook}
-				loading={detailLoading}
-				onDownload={onDownload}
-			/>
 		</>
 	);
 }

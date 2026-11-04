@@ -16,7 +16,8 @@
 "use client";
 
 export const DEFAULT_PREFIX = "";
-export const GITHUB_MIDDLE = "https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books";
+export const GITHUB_MIDDLE =
+    "https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books";
 export const SOURCE_PRESETS = [
     "",
     "https://777.z321.cc.cd/",
@@ -86,8 +87,12 @@ export const SOURCE_PRESETS = [
     "https://v6.gh-proxy.org/",
 ];
 
+export function getSourcePrefix(): string {
+    return localStorage.getItem("githubProxyPrefix") || DEFAULT_PREFIX;
+}
+
 export function getPrefix(): string {
-    return (localStorage.getItem("githubProxyPrefix") || DEFAULT_PREFIX) + GITHUB_MIDDLE;
+    return getSourcePrefix() + GITHUB_MIDDLE;
 }
 
 export function setPrefix(newPrefix: string) {
@@ -103,8 +108,7 @@ const getGitHubUrl = (file: string) => {
     return `${getPrefix()}/${file}`;
 };
 
-export const getIndexUrl = () =>
-    getGitHubUrl(`bookcase.json`);
+export const getIndexUrl = () => getGitHubUrl(`bookcase.json`);
 
 export const getJsonUrl = (uuid: string) =>
     getGitHubUrl(`${uuid.slice(0, 2)}/${uuid}.json`);
@@ -119,29 +123,37 @@ export function getCoverUrls(uuid: string) {
     ];
 }
 
-export async function testSourceLatency(baseUrl: string): Promise<number> {
-    const testUrl = `${baseUrl}${GITHUB_MIDDLE}/bookcase.json?_t=${Date.now()}`;
+// Keep the resource URL stable so the test uses the same CDN cache as real visits.
+export async function testSourceLatency(
+    baseUrl: string,
+    signal?: AbortSignal,
+): Promise<number> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const cancel = () => controller.abort();
+    signal?.addEventListener("abort", cancel, { once: true });
+    if (signal?.aborted) controller.abort();
+    const timeoutId = setTimeout(cancel, 6000);
     const startTime = performance.now();
-
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     try {
-        const response = await fetch(testUrl, {
-            method: "GET",
-            signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) return -1;
-
-        const reader = response.body?.getReader();
-        if (reader) {
-            await reader.read();
-            reader.cancel();
-        }
+        const response = await fetch(
+            `${baseUrl}${GITHUB_MIDDLE}/bookcase.json`,
+            {
+                signal: controller.signal,
+                cache: "no-store",
+            },
+        );
+        if (!response.ok || !response.body) return -1;
+        reader = response.body.getReader();
+        const { done, value } = await reader.read();
+        if (done || !value?.length) return -1;
         return Math.round(performance.now() - startTime);
     } catch {
-        clearTimeout(timeoutId);
         return -1;
+    } finally {
+        clearTimeout(timeoutId);
+        signal?.removeEventListener("abort", cancel);
+        if (reader) await reader.cancel().catch(() => {});
+        controller.abort();
     }
 }

@@ -75,28 +75,47 @@ const getTextbookMaterialTypeDisplay = (type: string) => {
 	return typeMap[type] || type;
 };
 
-function LinkItem({ icon, label, url }: { icon: React.ReactNode; label: string; url: string; }) {
-	return <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-		{icon}
-		<Typography variant="body2" sx={{ mr: 1 }}>
-			<strong>{label}：</strong>
-		</Typography>
-		<MuiLink
-			href={url}
-			target="_blank"
-			rel="noopener noreferrer"
+function LinkItem({
+	icon,
+	label,
+	url,
+}: {
+	icon: React.ReactNode;
+	label: string;
+	url: string;
+}) {
+	return (
+		<Box
 			sx={{
 				display: "flex",
 				alignItems: "center",
-				gap: 0.5,
-				wordBreak: "break-all",
-				flex: 1,
+				flexWrap: { xs: "wrap", sm: "nowrap" },
+				gap: 1,
 			}}
 		>
-			{url}
-			<OpenInNewIcon fontSize="small" />
-		</MuiLink>
-	</Box>;
+			{icon}
+			<Typography variant="body2" sx={{ mr: 1 }}>
+				<strong>{label}：</strong>
+			</Typography>
+			<MuiLink
+				href={url}
+				target="_blank"
+				rel="noopener noreferrer"
+				sx={{
+					display: "flex",
+					alignItems: "center",
+					gap: 0.5,
+					wordBreak: "break-all",
+					flex: 1,
+					minWidth: 0,
+					flexBasis: { xs: "100%", sm: "auto" },
+				}}
+			>
+				{url}
+				<OpenInNewIcon fontSize="small" />
+			</MuiLink>
+		</Box>
+	);
 }
 
 export default function BookDetailDialog({
@@ -118,8 +137,10 @@ export default function BookDetailDialog({
 			slotProps={{
 				paper: {
 					sx: {
-						maxHeight: "95vh",
-						minHeight: "80vh",
+						m: { xs: 1, sm: 4 },
+						width: { xs: "calc(100% - 16px)", sm: "calc(100% - 64px)" },
+						maxHeight: { xs: "calc(100dvh - 16px)", sm: "95vh" },
+						minHeight: { xs: 0, sm: "80vh" },
 					},
 				},
 			}}
@@ -130,17 +151,29 @@ export default function BookDetailDialog({
 					justifyContent: "space-between",
 					alignItems: "center",
 					pb: 1,
+					px: { xs: 2, sm: 3 },
 				}}
 			>
 				<Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
 					课本详细信息
 				</Typography>
-				<IconButton onClick={onClose} size="small" sx={{ color: "grey.500" }}>
+				<IconButton
+					aria-label="关闭详情"
+					onClick={onClose}
+					sx={{ color: "grey.500" }}
+				>
 					<CloseIcon />
 				</IconButton>
 			</DialogTitle>
 
-			<DialogContent sx={{ pt: 1 }}>
+			<DialogContent
+				sx={{
+					pt: 1,
+					px: { xs: 1.5, sm: 3 },
+					overflowWrap: "anywhere",
+					"& .MuiChip-root": { maxWidth: "100%" },
+				}}
+			>
 				{loading ? (
 					<Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
 						<CircularProgress />
@@ -196,7 +229,7 @@ export default function BookDetailDialog({
 							</Box>
 
 							{/* 基本信息 */}
-							<Box sx={{ flex: 1 }}>
+							<Box sx={{ flex: 1, minWidth: 0 }}>
 								<Paper
 									sx={{
 										p: 2,
@@ -452,7 +485,16 @@ export default function BookDetailDialog({
 				)}
 			</DialogContent>
 
-			<DialogActions sx={{ px: 3, pb: 2 }}>
+			<DialogActions
+				sx={{
+					px: { xs: 1.5, sm: 3 },
+					pb: "max(16px, env(safe-area-inset-bottom))",
+					"& .MuiButton-root": {
+						minHeight: { xs: 44, sm: "auto" },
+						flex: { xs: 1, sm: "initial" },
+					},
+				}}
+			>
 				{book && !loading && (
 					<Button
 						variant="contained"

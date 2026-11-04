@@ -7,30 +7,33 @@
 		"dev": "next dev --turbopack",
 		"build": "next build --turbopack",
 		"start": "next start",
-		"lint": "next lint",
+		"lint": "eslint .",
 		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
+		"test": "node --test tests/*.test.mjs",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@emotion/react": "^11.14.0",
 		"@emotion/styled": "^11.14.1",
-		"@mui/icons-material": "^9.4.0",
-		"@mui/material": "^9.4.0",
-		"@opennextjs/cloudflare": "^1.20.8",
-		"next": "16.3.8",
-		"react": "19.2.8",
-		"react-dom": "19.2.8",
+		"@mui/icons-material": "^9.5.0",
+		"@mui/material": "^9.5.0",
+		"@mui/x-data-grid": "9.17.0",
+		"@opennextjs/cloudflare": "^1.20.15",
+		"next": "16.4.3",
+		"react": "19.3.1",
+		"react-dom": "19.3.1",
 		"react-intersection-observer": "^11.0.1"
 	},
 	"devDependencies": {
-		"@eslint/eslintrc": "^3.3.7",
-		"@types/node": "^26.6.4",
+		"@types/node": "^26.6.6",
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",
-		"eslint": "^9.39.5",
-		"eslint-config-next": "16.2.12",
-		"typescript": "^6.0.3",
-		"wrangler": "^4.147.0"
+		"@typescript/native": "npm:typescript@^7.0.2",
+		"eslint": "^10.14.0",
+		"eslint-config-next": "16.4.3",
+		"typescript": "npm:@typescript/typescript6@^6.0.2",
+		"wrangler": "^4.156.0"
 	}
 }

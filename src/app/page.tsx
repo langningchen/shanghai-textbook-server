@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
@@ -33,14 +33,6 @@ import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Divider from "@mui/material/Divider";
-import Paper from "@mui/material/Paper";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Checkbox from "@mui/material/Checkbox";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Button from "@mui/material/Button";
@@ -49,27 +41,20 @@ import SchoolIcon from "@mui/icons-material/School";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import DownloadIcon from "@mui/icons-material/Download";
-import InfoIcon from "@mui/icons-material/Info";
 import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import SpeedIcon from "@mui/icons-material/Speed";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 import { Textbook, FilterOptions } from "@/types/textbook";
-import {
-	filterBooks,
-	generateFriendlyFilename,
-	getGradeDisplayName,
-	getTermDisplayName,
-} from "@/utils/helpers";
-import {
-	getIndexUrl,
-	getJsonUrl,
-	getPdfPrefix
-} from '@/utils/url';
+import { filterBooks, generateFriendlyFilename } from "@/utils/helpers";
+import { getIndexUrl, getPdfPrefix } from "@/utils/url";
 import BookCard from "@/components/BookCard";
+import BookList from "@/components/BookList";
+import { fetchTextbookDetail } from "@/utils/textbook";
 import BookFilter from "@/components/BookFilter";
 import BookDetailDialog from "@/components/BookDetailDialog";
 import SourceSwitchDialog from "@/components/SourceSwitchDialog";
@@ -85,6 +70,12 @@ interface DownloadingData {
 		current: number;
 		batch?: BatchProgress;
 	};
+}
+
+async function loadBooks(signal?: AbortSignal): Promise<Textbook[]> {
+	const response = await fetch(getIndexUrl(), { signal });
+	if (!response.ok) throw new Error(`HTTP ${response.status}`);
+	return response.json();
 }
 
 const theme = createTheme({
@@ -107,9 +98,13 @@ const theme = createTheme({
 });
 
 export default function HomePage() {
+	const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 	const [books, setBooks] = useState<Textbook[]>([]);
-	const [filteredBooks, setFilteredBooks] = useState<Textbook[]>([]);
 	const [filters, setFilters] = useState<FilterOptions>({});
+	const filteredBooks = useMemo(
+		() => filterBooks(books, filters),
+		[books, filters],
+	);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [downloading, setDownloading] = useState<DownloadingData | null>(null);
@@ -121,12 +116,25 @@ export default function HomePage() {
 	const [showScrollTop, setShowScrollTop] = useState(false);
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+	const visibleBooks = viewMode === "grid" ? filteredBooks : books;
 	const [selectedBookIds, setSelectedBookIds] = useState<string[]>([]);
 	const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 	const [detailBook, setDetailBook] = useState<Textbook | null>(null);
 	const [detailLoading, setDetailLoading] = useState(false);
 	const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
 	const [loadingTimeout, setLoadingTimeout] = useState(false);
+	const [downloadSlow, setDownloadSlow] = useState(false);
+	const downloadController = useRef<AbortController | null>(null);
+	const detailController = useRef<AbortController | null>(null);
+	useEffect(() => () => detailController.current?.abort(), []);
+	useEffect(() => () => downloadController.current?.abort(), []);
+
+	const handleDownloadSourceSwitch = () => {
+		downloadController.current?.abort();
+		setDownloading(null);
+		setDownloadSlow(false);
+		setSourceDialogOpen(true);
+	};
 
 	const menuOpen = Boolean(anchorEl);
 
@@ -140,14 +148,23 @@ export default function HomePage() {
 				setLoadingTimeout(true);
 			}, 3000);
 			return () => clearTimeout(timer);
-		} else {
-			setLoadingTimeout(false);
 		}
 	}, [loading]);
 
-	// Fetch books from API
 	useEffect(() => {
-		fetchBooks();
+		const controller = new AbortController();
+		loadBooks(controller.signal)
+			.then((result) => {
+				if (!controller.signal.aborted) setBooks(result);
+			})
+			.catch(() => {
+				if (!controller.signal.aborted)
+					setError("网络错误或数据源不可访问，请检查连接或更换源");
+			})
+			.finally(() => {
+				if (!controller.signal.aborted) setLoading(false);
+			});
+		return () => controller.abort();
 	}, []);
 
 	// Handle scroll to show/hide scroll-to-top button
@@ -160,23 +177,17 @@ export default function HomePage() {
 		return () => window.removeEventListener("scroll", handleScroll);
 	}, []);
 
-	// Filter books when filters change and reset to page 1
-	useEffect(() => {
-		const filtered = filterBooks(books, filters);
-		setFilteredBooks(filtered);
-		setCurrentPage(1); // Reset to first page when filters change
-		setSelectedBookIds([]);
-	}, [books, filters]);
+	const handleFiltersChange = (nextFilters: FilterOptions) => {
+		setFilters(nextFilters);
+		setCurrentPage(1);
+	};
 
 	const fetchBooks = async () => {
 		try {
 			setLoading(true);
 			setError(null);
-			const response = await fetch(getIndexUrl());
-			if (!response.ok) {
-				throw new Error("HTTP error " + response.status);
-			}
-			setBooks(await response.json());
+			setLoadingTimeout(false);
+			setBooks(await loadBooks());
 		} catch {
 			setError("网络错误或数据源不可访问，请检查连接或更换源");
 		} finally {
@@ -184,130 +195,140 @@ export default function HomePage() {
 		}
 	};
 
-	const handleDownload = async (bookId: string, batch?: BatchProgress) => {
-		const downloadFailed = (message: string) => {
-			setDownloading(null);
-			setSnackbar({ open: true, message, severity: "error", });
-		};
+	const handleDownload = useCallback(
+		async (bookId: string, batch?: BatchProgress): Promise<boolean> => {
+			// One controller covers discovery, all parts, and cancellation of a batch item.
+			if (downloadController.current) return false;
+			const controller = new AbortController();
+			downloadController.current = controller;
+			setDownloadSlow(false);
+			let receivedBytes = 0;
+			let sampledBytes = 0;
+			let sampledAt = performance.now();
+			const speedTimer = setInterval(() => {
+				const now = performance.now();
+				const bytesPerSecond =
+					(receivedBytes - sampledBytes) / ((now - sampledAt) / 1000);
+				setDownloadSlow(bytesPerSecond < 128 * 1024);
+				sampledBytes = receivedBytes;
+				sampledAt = now;
+			}, 8000);
 
-		const book = books.find((b) => b.uuid === bookId);
-		if (!book) {
-			return downloadFailed("下载失败，教材不存在");
-		}
-
-		setDownloading({ title: book.title, progress: { current: 0, batch } });
-		const prefix = getPdfPrefix(bookId);
-		const tryFetchUrls = async (suffix?: string): Promise<string | null> => {
-			const url = `${prefix}${suffix || ""}`;
 			try {
-				const response = await fetch(url, { method: "HEAD" });
-				if (response.ok) {
-					return url;
-				}
-			} catch {
-				return null;
-			}
-			return null;
-		};
-
-		const urls: string[] = [];
-		const firstUrl = await tryFetchUrls();
-		if (firstUrl) {
-			urls.push(firstUrl);
-		}
-		let index = 1;
-		while (true) {
-			const partUrl = await tryFetchUrls(`.${index}`);
-			if (partUrl) {
-				urls.push(partUrl);
-				index++;
-			} else {
-				break;
-			}
-		}
-		if (urls.length === 0) {
-			return downloadFailed("下载失败，文件不存在");
-		}
-
-		setDownloading({ title: book.title, progress: { current: 0, batch } });
-		const parts: Blob[] = [];
-		for (let i = 0; i < urls.length; i++) {
-			const url = urls[i];
-			try {
-				const response = await fetch(url);
-				if (!response.ok) {
-					return downloadFailed(`下载失败，文件不存在: ${url}`);
-				}
-
-				const contentLength = response.headers.get("content-length");
-				const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
-
-				const reader = response.body?.getReader();
-				if (!reader) {
-					const blob = await response.blob();
-					parts.push(blob);
-					continue;
-				}
-
-				const chunks: Uint8Array[] = [];
-				let receivedBytes = 0;
-				let lastUpdateTime = 0;
-
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-
-					chunks.push(value);
-					receivedBytes += value.length;
-
-					const now = performance.now();
-					if (now - lastUpdateTime > 200) {
-						lastUpdateTime = now;
-						const currentProgress = totalBytes > 0 ? receivedBytes / totalBytes : 0;
-						setDownloading({
-							title: book.title,
-							progress: {
-								current: (i + currentProgress) / urls.length,
-								batch,
-							},
+				const book = books.find((b) => b.uuid === bookId);
+				if (!book) throw new Error("下载失败，教材不存在");
+				setDownloading({ title: book.title, progress: { current: 0, batch } });
+				const prefix = getPdfPrefix(bookId);
+				const tryFetchUrl = async (suffix = ""): Promise<string | null> => {
+					const url = `${prefix}${suffix}`;
+					try {
+						const response = await fetch(url, {
+							method: "HEAD",
+							signal: controller.signal,
 						});
+						return response.ok ? url : null;
+					} catch {
+						controller.signal.throwIfAborted();
+						return null;
 					}
+				};
+				const urls: string[] = [];
+				const firstUrl = await tryFetchUrl();
+				if (firstUrl) urls.push(firstUrl);
+				for (let index = 1; ; index++) {
+					const partUrl = await tryFetchUrl(`.${index}`);
+					if (!partUrl) break;
+					urls.push(partUrl);
 				}
+				if (!urls.length)
+					throw new Error("下载失败，文件不存在或数据源不可访问，请尝试换源");
 
-				setDownloading({
-					title: book.title,
-					progress: {
-						current: (i + 1) / urls.length,
-						batch,
-					},
-				});
-
-				const partBlob = new Blob(chunks as BlobPart[]);
-				parts.push(partBlob);
-			} catch {
-				return downloadFailed(`下载失败，网络错误: ${url}`);
+				const parts: Blob[] = [];
+				for (let i = 0; i < urls.length; i++) {
+					const response = await fetch(urls[i], { signal: controller.signal });
+					if (!response.ok)
+						throw new Error("下载失败，文件不可访问，请尝试换源");
+					const totalBytes =
+						Number(response.headers.get("content-length")) || 0;
+					const reader = response.body?.getReader();
+					if (!reader) {
+						const blob = await response.blob();
+						receivedBytes += blob.size;
+						parts.push(blob);
+					} else {
+						const chunks: Uint8Array[] = [];
+						let partBytes = 0;
+						let lastUpdateTime = 0;
+						while (true) {
+							const { done, value } = await reader.read();
+							if (done) break;
+							chunks.push(value);
+							partBytes += value.length;
+							receivedBytes += value.length;
+							const now = performance.now();
+							if (now - lastUpdateTime > 200) {
+								lastUpdateTime = now;
+								setDownloading({
+									title: book.title,
+									progress: {
+										current:
+											(i +
+												(totalBytes > 0
+													? Math.min(partBytes / totalBytes, 1)
+													: 0)) /
+											urls.length,
+										batch,
+									},
+								});
+							}
+						}
+						parts.push(new Blob(chunks as BlobPart[]));
+					}
+					setDownloading({
+						title: book.title,
+						progress: { current: (i + 1) / urls.length, batch },
+					});
+				}
+				controller.signal.throwIfAborted();
+				const url = URL.createObjectURL(
+					new Blob(parts, { type: "application/pdf" }),
+				);
+				const link = document.createElement("a");
+				link.href = url;
+				link.download = generateFriendlyFilename(book);
+				document.body.appendChild(link);
+				link.click();
+				link.remove();
+				URL.revokeObjectURL(url);
+				if (!batch)
+					setSnackbar({
+						open: true,
+						message: "下载已开始，请检查浏览器下载文件夹",
+						severity: "success",
+					});
+				return true;
+			} catch (error) {
+				if (!controller.signal.aborted)
+					setSnackbar({
+						open: true,
+						message:
+							error instanceof Error
+								? error.message
+								: "下载失败，网络错误，请尝试换源",
+						severity: "error",
+					});
+				return false;
+			} finally {
+				clearInterval(speedTimer);
+				if (downloadController.current === controller) {
+					downloadController.current = null;
+					setDownloading(null);
+					setDownloadSlow(false);
+				}
 			}
-		}
-
-		const combinedBlob = new Blob(parts, { type: "application/pdf" });
-		const url = URL.createObjectURL(combinedBlob);
-		const link = document.createElement("a");
-		link.href = url;
-		link.download = generateFriendlyFilename(book);
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		URL.revokeObjectURL(url);
-
-		setDownloading(null);
-		if (!batch) {
-			setSnackbar({
-				open: true,
-				message: "下载已开始，请检查浏览器下载文件夹",
-				severity: "success",
-			});
-		}
-	};
+		},
+		[books],
+	);
 
 	const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
 		setAnchorEl(event.currentTarget);
@@ -322,41 +343,30 @@ export default function HomePage() {
 		handleMenuClose();
 	};
 
-	const handleShowDetail = async (bookId: string) => {
+	const handleShowDetail = useCallback(async (bookId: string) => {
+		detailController.current?.abort();
+		const controller = new AbortController();
+		detailController.current = controller;
 		setDetailDialogOpen(true);
+		setDetailBook(null);
 		setDetailLoading(true);
-
 		try {
-			const response = await fetch(getJsonUrl(bookId));
-			const result = (await response.json()) as {
-				success: boolean;
-				data?: Textbook;
-				error?: string;
-			};
-
-			if (result.success && result.data) {
-				setDetailBook(result.data);
-			} else {
-				setDetailBook(null);
+			const book = await fetchTextbookDetail(bookId, controller.signal);
+			if (!controller.signal.aborted) setDetailBook(book);
+		} catch {
+			if (!controller.signal.aborted)
 				setSnackbar({
 					open: true,
-					message: result.error || "加载详情失败",
+					message: "加载详情失败，请稍后重试或切换数据源",
 					severity: "error",
 				});
-			}
-		} catch {
-			setDetailBook(null);
-			setSnackbar({
-				open: true,
-				message: "加载详情失败，请稍后重试",
-				severity: "error",
-			});
 		} finally {
-			setDetailLoading(false);
+			if (!controller.signal.aborted) setDetailLoading(false);
 		}
-	};
+	}, []);
 
 	const handleCloseDetail = () => {
+		detailController.current?.abort();
 		setDetailDialogOpen(false);
 		setDetailBook(null);
 	};
@@ -367,24 +377,9 @@ export default function HomePage() {
 	) => {
 		if (nextMode) {
 			setViewMode(nextMode);
+			setCurrentPage(1);
 			setSelectedBookIds([]);
 		}
-	};
-
-	const handleToggleBookSelection = (bookId: string) => {
-		setSelectedBookIds((prev) =>
-			prev.includes(bookId)
-				? prev.filter((id) => id !== bookId)
-				: [...prev, bookId],
-		);
-	};
-
-	const handleSelectAllCurrentPage = (checked: boolean) => {
-		if (checked) {
-			setSelectedBookIds(currentBooks.map((book) => book.uuid));
-			return;
-		}
-		setSelectedBookIds([]);
 	};
 
 	const handleBatchDownload = async () => {
@@ -402,7 +397,13 @@ export default function HomePage() {
 		};
 
 		for (let i = 0; i < selectedBookIds.length; i++) {
-			await handleDownload(selectedBookIds[i], { ...batch, current: i + 1 });
+			if (
+				!(await handleDownload(selectedBookIds[i], {
+					...batch,
+					current: i + 1,
+				}))
+			)
+				break;
 		}
 	};
 
@@ -411,12 +412,6 @@ export default function HomePage() {
 	const startIndex = (currentPage - 1) * booksPerPage;
 	const endIndex = startIndex + booksPerPage;
 	const currentBooks = filteredBooks.slice(startIndex, endIndex);
-	const selectedCountInCurrentPage = currentBooks.filter((book) =>
-		selectedBookIds.includes(book.uuid),
-	).length;
-	const allCurrentPageSelected =
-		currentBooks.length > 0 &&
-		selectedCountInCurrentPage === currentBooks.length;
 
 	if (loading) {
 		return (
@@ -462,10 +457,12 @@ export default function HomePage() {
 						</Box>
 					)}
 				</Box>
-				<SourceSwitchDialog
-					open={sourceDialogOpen}
-					onClose={() => setSourceDialogOpen(false)}
-				/>
+				{sourceDialogOpen && (
+					<SourceSwitchDialog
+						open={sourceDialogOpen}
+						onClose={() => setSourceDialogOpen(false)}
+					/>
+				)}
 			</ThemeProvider>
 		);
 	}
@@ -492,10 +489,12 @@ export default function HomePage() {
 						</Button>
 					</Box>
 				</Container>
-				<SourceSwitchDialog
-					open={sourceDialogOpen}
-					onClose={() => setSourceDialogOpen(false)}
-				/>
+				{sourceDialogOpen && (
+					<SourceSwitchDialog
+						open={sourceDialogOpen}
+						onClose={() => setSourceDialogOpen(false)}
+					/>
+				)}
 			</ThemeProvider>
 		);
 	}
@@ -506,16 +505,40 @@ export default function HomePage() {
 
 			{/* App Bar */}
 			<AppBar position="sticky" elevation={2}>
-				<Toolbar>
-					<SchoolIcon sx={{ mr: 2 }} />
-					<Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+				<Toolbar
+					sx={{
+						flexWrap: { xs: "wrap", sm: "nowrap" },
+						py: { xs: 1, sm: 0 },
+						columnGap: { xs: 0.5, sm: 0 },
+					}}
+				>
+					<SchoolIcon sx={{ mr: { xs: 0.5, sm: 2 }, flexShrink: 0 }} />
+					<Typography
+						variant="h6"
+						component="div"
+						sx={{
+							flexGrow: 1,
+							minWidth: 0,
+							fontSize: { xs: "1rem", sm: "1.25rem" },
+						}}
+					>
 						上海教科书资源库
 					</Typography>
-					<Typography variant="body2" sx={{ mr: 2 }}>
-						共 {filteredBooks.length} 本教科书
-						{totalPages > 1 && (
+					<Typography
+						variant="body2"
+						sx={{
+							mr: { sm: 2 },
+							order: { xs: 1, sm: 0 },
+							width: { xs: "100%", sm: "auto" },
+							mt: { xs: 0.5, sm: 0 },
+							fontSize: { xs: "0.75rem", sm: "0.875rem" },
+						}}
+					>
+						共 {visibleBooks.length} 本教科书
+						{viewMode === "grid" && totalPages > 1 && (
 							<span>
-								{" "}• 第 {currentPage} / {totalPages} 页
+								{" "}
+								• 第 {currentPage} / {totalPages} 页
 							</span>
 						)}
 					</Typography>
@@ -529,7 +552,9 @@ export default function HomePage() {
 							startIcon={<SpeedIcon />}
 							onClick={() => setSourceDialogOpen(true)}
 							sx={{
-								mr: 1.5,
+								mr: { xs: 0, sm: 1.5 },
+								flexShrink: 0,
+								minHeight: { xs: 40, sm: "auto" },
 								borderColor: "rgba(255,255,255,0.6)",
 								"&:hover": {
 									borderColor: "#fff",
@@ -550,6 +575,17 @@ export default function HomePage() {
 						<GitHubIcon />
 					</IconButton>
 					<Menu
+						slotProps={{
+							paper: {
+								sx: {
+									maxWidth: "calc(100% - 24px)",
+									"& .MuiListItemText-secondary": {
+										overflowWrap: "anywhere",
+										whiteSpace: "normal",
+									},
+								},
+							},
+						}}
 						anchorEl={anchorEl}
 						open={menuOpen}
 						onClose={handleMenuClose}
@@ -608,10 +644,18 @@ export default function HomePage() {
 			</AppBar>
 
 			{/* Main Content */}
-			<Container maxWidth="xl" sx={{ py: 3 }}>
+			<Container
+				maxWidth="xl"
+				sx={{ py: { xs: 2, sm: 3 }, px: { xs: 1.5, sm: 3 } }}
+			>
 				{/* Header */}
-				<Box sx={{ mb: 4, textAlign: "center" }}>
-					<Typography variant="h4" component="h1" gutterBottom>
+				<Box sx={{ mb: { xs: 2, sm: 4 }, textAlign: "center" }}>
+					<Typography
+						variant="h4"
+						component="h1"
+						gutterBottom
+						sx={{ fontSize: { xs: "1.5rem", sm: "2.125rem" } }}
+					>
 						上海教科书资源库
 					</Typography>
 					<Typography variant="body1" color="text.secondary">
@@ -619,19 +663,63 @@ export default function HomePage() {
 					</Typography>
 				</Box>
 
-				{/* Filters */}
-				<BookFilter
-					filters={filters}
-					onFiltersChange={setFilters}
-					onClearFilters={() => {
-						setFilters({});
-						setCurrentPage(1);
+				<Box
+					sx={{
+						display: "flex",
+						justifyContent: "space-between",
+						alignItems: "center",
+						mb: 2,
+						gap: 2,
+						flexWrap: "wrap",
 					}}
-					books={books}
-				/>
+				>
+					<ToggleButtonGroup
+						value={viewMode}
+						exclusive
+						size="small"
+						onChange={handleViewModeChange}
+						aria-label="展示方式"
+					>
+						<ToggleButton value="grid" aria-label="卡片模式">
+							<ViewModuleIcon sx={{ mr: 0.5 }} />
+							卡片
+						</ToggleButton>
+						<ToggleButton value="list" aria-label="列表模式">
+							<ViewListIcon sx={{ mr: 0.5 }} />
+							列表
+						</ToggleButton>
+					</ToggleButtonGroup>
+
+					{viewMode === "list" && (
+						<Button
+							variant="contained"
+							sx={{
+								width: { xs: "100%", sm: "auto" },
+								minHeight: { xs: 44, sm: "auto" },
+							}}
+							startIcon={<DownloadIcon />}
+							onClick={handleBatchDownload}
+							disabled={selectedBookIds.length === 0}
+						>
+							批量下载 {selectedBookIds.length} 本
+						</Button>
+					)}
+				</Box>
+
+				{/* Card filters */}
+				{viewMode === "grid" && (
+					<BookFilter
+						filters={filters}
+						onFiltersChange={handleFiltersChange}
+						onClearFilters={() => {
+							handleFiltersChange({});
+						}}
+						books={books}
+					/>
+				)}
 
 				{/* Results */}
-				{filteredBooks.length === 0 ? (
+				{visibleBooks.length === 0 ? (
 					<Box sx={{ textAlign: "center", py: 8 }}>
 						<Typography variant="h6" color="text.secondary">
 							没有找到符合条件的教科书
@@ -642,45 +730,6 @@ export default function HomePage() {
 					</Box>
 				) : (
 					<>
-						<Box
-							sx={{
-								display: "flex",
-								justifyContent: "space-between",
-								alignItems: "center",
-								mb: 2,
-								gap: 2,
-								flexWrap: "wrap",
-							}}
-						>
-							<ToggleButtonGroup
-								value={viewMode}
-								exclusive
-								size="small"
-								onChange={handleViewModeChange}
-								aria-label="展示方式"
-							>
-								<ToggleButton value="grid" aria-label="卡片模式">
-									<ViewModuleIcon sx={{ mr: 0.5 }} />
-									卡片
-								</ToggleButton>
-								<ToggleButton value="list" aria-label="列表模式">
-									<ViewListIcon sx={{ mr: 0.5 }} />
-									列表
-								</ToggleButton>
-							</ToggleButtonGroup>
-
-							{viewMode === "list" && (
-								<Button
-									variant="contained"
-									startIcon={<DownloadIcon />}
-									onClick={handleBatchDownload}
-									disabled={selectedBookIds.length === 0}
-								>
-									批量下载 {selectedBookIds.length} 本
-								</Button>
-							)}
-						</Box>
-
 						{viewMode === "grid" ? (
 							<Box
 								sx={{
@@ -691,7 +740,7 @@ export default function HomePage() {
 										md: "repeat(3, 1fr)",
 										lg: "repeat(4, 1fr)",
 									},
-									gap: 3,
+									gap: { xs: 1.5, sm: 3 },
 									mb: 4,
 								}}
 							>
@@ -702,99 +751,23 @@ export default function HomePage() {
 											key={uniqueKey}
 											book={book}
 											onDownload={handleDownload}
+											onShowDetail={handleShowDetail}
 										/>
 									);
 								})}
 							</Box>
 						) : (
-							<TableContainer component={Paper} sx={{ mb: 4 }}>
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell padding="checkbox">
-												<Checkbox
-													indeterminate={
-														selectedCountInCurrentPage > 0 &&
-														!allCurrentPageSelected
-													}
-													checked={allCurrentPageSelected}
-													onChange={(event) =>
-														handleSelectAllCurrentPage(event.target.checked)
-													}
-													slotProps={{
-														input: { "aria-label": "选择当前页全部教材" },
-													}}
-												/>
-											</TableCell>
-											<TableCell>书名</TableCell>
-											<TableCell>年级</TableCell>
-											<TableCell>学期</TableCell>
-											<TableCell>科目</TableCell>
-											<TableCell>ISBN</TableCell>
-											<TableCell align="right">操作</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{currentBooks.map((book) => {
-											const isSelected = selectedBookIds.includes(book.uuid);
-											return (
-												<TableRow key={book.uuid} hover selected={isSelected}>
-													<TableCell padding="checkbox">
-														<Checkbox
-															checked={isSelected}
-															onChange={() =>
-																handleToggleBookSelection(book.uuid)
-															}
-															slotProps={{
-																input: {
-																	"aria-label": `选择教材 ${book.title}`,
-																},
-															}}
-														/>
-													</TableCell>
-													<TableCell>{book.title}</TableCell>
-													<TableCell>
-														{getGradeDisplayName(book.grade)}
-													</TableCell>
-													<TableCell>{getTermDisplayName(book.term)}</TableCell>
-													<TableCell>{book.subject_str}</TableCell>
-													<TableCell>{book.isbn}</TableCell>
-													<TableCell align="right">
-														<Box
-															sx={{
-																display: "flex",
-																gap: 1,
-																justifyContent: "flex-end",
-															}}
-														>
-															<Button
-																size="small"
-																startIcon={<InfoIcon />}
-																variant="outlined"
-																onClick={() => handleShowDetail(book.uuid)}
-															>
-																详情
-															</Button>
-															<Button
-																size="small"
-																startIcon={<DownloadIcon />}
-																variant="contained"
-																onClick={() => handleDownload(book.uuid)}
-															>
-																下载
-															</Button>
-														</Box>
-													</TableCell>
-												</TableRow>
-											);
-										})}
-									</TableBody>
-								</Table>
-							</TableContainer>
+							<BookList
+								books={books}
+								selectedBookIds={selectedBookIds}
+								onSelectionChange={setSelectedBookIds}
+								onShowDetail={handleShowDetail}
+								onDownload={handleDownload}
+							/>
 						)}
 
 						{/* Pagination */}
-						{totalPages > 1 && (
+						{viewMode === "grid" && totalPages > 1 && (
 							<>
 								<Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
 									<Pagination
@@ -805,9 +778,10 @@ export default function HomePage() {
 											window.scrollTo({ top: 0, behavior: "smooth" });
 										}}
 										color="primary"
-										size="large"
-										showFirstButton
-										showLastButton
+										size={isMobile ? "small" : "large"}
+										siblingCount={isMobile ? 0 : 1}
+										showFirstButton={!isMobile}
+										showLastButton={!isMobile}
 										sx={{
 											"& .MuiPagination-ul": {
 												flexWrap: "wrap",
@@ -839,10 +813,12 @@ export default function HomePage() {
 				onDownload={handleDownload}
 			/>
 
-			<SourceSwitchDialog
-				open={sourceDialogOpen}
-				onClose={() => setSourceDialogOpen(false)}
-			/>
+			{sourceDialogOpen && (
+				<SourceSwitchDialog
+					open={sourceDialogOpen}
+					onClose={() => setSourceDialogOpen(false)}
+				/>
+			)}
 
 			{/* Scroll to Top */}
 			{showScrollTop && (
@@ -852,7 +828,7 @@ export default function HomePage() {
 					onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
 					sx={{
 						position: "fixed",
-						bottom: 16,
+						bottom: "max(16px, env(safe-area-inset-bottom))",
 						right: 16,
 						zIndex: 1000,
 					}}
@@ -867,7 +843,8 @@ export default function HomePage() {
 					<Card
 						elevation={8}
 						sx={{
-							width: "50%",
+							width: { xs: "calc(100% - 32px)", sm: "80%", md: "50%" },
+							maxWidth: 640,
 							borderRadius: 3,
 							textAlign: "center",
 						}}
@@ -881,19 +858,44 @@ export default function HomePage() {
 									mb: 2,
 									overflow: "hidden",
 									textOverflow: "ellipsis",
-									whiteSpace: "nowrap",
+									whiteSpace: { xs: "normal", sm: "nowrap" },
+									overflowWrap: "anywhere",
 								}}
 								title={downloading.title}
 							>
 								正在下载 {downloading.title}
 							</Typography>
 
+							{downloadSlow && (
+								<Alert severity="warning" sx={{ mb: 2, textAlign: "left" }}>
+									下载较慢或暂时没有响应，可以换个数据源试试。停止并换源后，需要重新下载；批量任务也会停止。
+									<Button
+										variant="outlined"
+										color="warning"
+										startIcon={<SwapHorizIcon />}
+										onClick={handleDownloadSourceSwitch}
+										sx={{ mt: 1, display: "flex" }}
+									>
+										停止下载并换源
+									</Button>
+								</Alert>
+							)}
+
 							<Box sx={{ width: "100%", mt: 1 }}>
-								<Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+								<Box
+									sx={{
+										display: "flex",
+										justifyContent: "space-between",
+										mb: 0.5,
+									}}
+								>
 									<Typography variant="body2" color="text.secondary">
 										下载进度
 									</Typography>
-									<Typography variant="body2" sx={{ fontWeight: "bold", color: "primary.main" }}>
+									<Typography
+										variant="body2"
+										sx={{ fontWeight: "bold", color: "primary.main" }}
+									>
 										{Math.round(downloading.progress.current * 100)}%
 									</Typography>
 								</Box>
@@ -906,18 +908,30 @@ export default function HomePage() {
 
 							{downloading.progress.batch && (
 								<Box sx={{ width: "100%", mt: 2 }}>
-									<Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+									<Box
+										sx={{
+											display: "flex",
+											justifyContent: "space-between",
+											mb: 0.5,
+										}}
+									>
 										<Typography variant="body2" color="text.secondary">
 											批量进度
 										</Typography>
-										<Typography variant="body2" sx={{ fontWeight: "bold", color: "primary.main" }}>
-											{downloading.progress.batch.current} / {downloading.progress.batch.total}
+										<Typography
+											variant="body2"
+											sx={{ fontWeight: "bold", color: "primary.main" }}
+										>
+											{downloading.progress.batch.current} /{" "}
+											{downloading.progress.batch.total}
 										</Typography>
 									</Box>
 									<LinearProgress
 										variant="determinate"
 										value={
-											(downloading.progress.batch.current / downloading.progress.batch.total) * 100
+											(downloading.progress.batch.current /
+												downloading.progress.batch.total) *
+											100
 										}
 										sx={{ height: 6, borderRadius: 3 }}
 									/>
@@ -944,4 +958,4 @@ export default function HomePage() {
 			</Snackbar>
 		</ThemeProvider>
 	);
-};
+}

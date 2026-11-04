@@ -25,17 +25,30 @@
    ```
 2. 安装依赖：
    ```bash
-   npm install
-   # 或
    pnpm install
    ```
 3. 配置数据仓库路径与网站参数，启动服务端：
    ```bash
-   npm start
-   # 或
-   pnpm start
+   pnpm dev
    ```
 4. 访问示例网站：[textbook.langningchen.com](https://textbook.langningchen.com)
+
+## 开发检查
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+DataGrid 使用固定的社区版 `@mui/x-data-grid@9.17.0`。安装时，pnpm 会自动应用
+[项目补丁](patches/@mui__x-data-grid@9.17.0.patch)，启用多条件筛选，并将每页行数上限改为 500。
+补丁同时覆盖 CommonJS 和 ES module，保留上游 MIT 版权与许可声明。
+请使用 pnpm 安装依赖；升级 DataGrid 时需要重新核对补丁，并验证多条件筛选和 250/500 行分页。
+
+`@typescript/native` 提供最新 TypeScript 7 的 `tsc`；`typescript` 别名提供 TypeScript 6 API，
+供尚未支持 TypeScript 7 API 的 ESLint 和 Next.js 工具调用。这是 TypeScript 官方建议的并行配置。
 
 ## 许可证
 
