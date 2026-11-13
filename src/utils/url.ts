@@ -20,10 +20,13 @@ export const GITHUB_MIDDLE =
     "https://raw.githubusercontent.com/langningchen/shanghai-textbook-data/refs/heads/main/books";
 export const SOURCE_PRESETS = [
     "",
-    "https://777.z321.cc.cd/",
     "https://axisnow.gh-proxy.org/",
-    "https://cdn.akaere.online/",
     "https://cdn.gh-proxy.org/",
+    "https://gh-proxy.org/",
+    "https://v4.gh-proxy.org/",
+    "https://v6.gh-proxy.org/",
+    "https://777.z321.cc.cd/",
+    "https://cdn.akaere.online/",
     "https://down.mxw.qzz.io/",
     "https://down.mxw.xx.kg/",
     "https://fastgit.cc/",
@@ -33,7 +36,6 @@ export const SOURCE_PRESETS = [
     "https://gg.z321.cc.cd/",
     "https://ggg.clwap.dpdns.org/",
     "https://gh-proxy.com/",
-    "https://gh-proxy.org/",
     "https://gh.07150721.xyz/",
     "https://gh.198962.xyz/",
     "https://gh.1k.ink/",
@@ -83,8 +85,6 @@ export const SOURCE_PRESETS = [
     "https://js.jiangss.shop/",
     "https://proxy.baguoyuyan.com/",
     "https://tvv.tw/",
-    "https://v4.gh-proxy.org/",
-    "https://v6.gh-proxy.org/",
 ];
 
 export function getSourcePrefix(): string {

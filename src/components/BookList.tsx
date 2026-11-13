@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -32,7 +32,7 @@ import {
 	type GridPaginationModel,
 } from "@mui/x-data-grid";
 import { zhCN } from "@mui/x-data-grid/locales";
-import { Textbook } from "@/types/textbook";
+import { type Textbook } from "@/types/textbook";
 import {
 	getGradeDisplayName,
 	getTermDisplayName,
@@ -52,7 +52,7 @@ const collator = new Intl.Collator("zh-CN", { numeric: true });
 const getBookId = (book: Textbook) => book.uuid;
 const getRowHeight = () => "auto" as const;
 
-export default function BookList({
+function BookList({
 	books,
 	selectedBookIds,
 	onSelectionChange,
@@ -165,7 +165,6 @@ export default function BookList({
 					{ value: "0", label: "不可用" },
 				],
 			},
-
 			{
 				field: "actions",
 				headerName: "操作",
@@ -224,6 +223,31 @@ export default function BookList({
 			},
 		],
 		[isMobile, onShowDetail, onDownload],
+	);
+
+	// Rebuilding this object on every render hands DataGrid a new identity and
+	// forces a full column re-evaluation, so it is derived once per input change.
+	const columnVisibility = useMemo<GridColumnVisibilityModel>(
+		() => ({
+			...Object.fromEntries(
+				columns.map(({ field }) => [
+					field,
+					(isMobile
+						? ["title", "use_year", "actions"]
+						: [
+							"title",
+							"grade",
+							"term",
+							"subject_str",
+							"use_year",
+							"actions",
+						]
+					).includes(field),
+				]),
+			),
+			...visibility,
+		}),
+		[columns, isMobile, visibility],
 	);
 
 	const resetPageAndSelection = () => {
@@ -294,25 +318,7 @@ export default function BookList({
 				pageSizeOptions={[10, 20, 25, 50, 75, 100, 250, 500]}
 				onSortModelChange={resetPageAndSelection}
 				onFilterModelChange={resetPageAndSelection}
-				columnVisibilityModel={{
-					...Object.fromEntries(
-						columns.map(({ field }) => [
-							field,
-							(isMobile
-								? ["title", "use_year", "actions"]
-								: [
-										"title",
-										"grade",
-										"term",
-										"subject_str",
-										"use_year",
-										"actions",
-									]
-							).includes(field),
-						]),
-					),
-					...visibility,
-				}}
+				columnVisibilityModel={columnVisibility}
 				onColumnVisibilityModelChange={setVisibility}
 				sx={{
 					"& .MuiDataGrid-cell": { display: "flex", alignItems: "center" },
@@ -337,3 +343,5 @@ export default function BookList({
 		</Box>
 	);
 }
+
+export default memo(BookList);

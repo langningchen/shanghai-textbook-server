@@ -15,6 +15,7 @@
 
 "use client";
 
+import { memo } from "react";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CardActions from "@mui/material/CardActions";
@@ -25,7 +26,7 @@ import Box from "@mui/material/Box";
 import Tooltip from "@mui/material/Tooltip";
 import InfoIcon from "@mui/icons-material/Info";
 import DownloadIcon from "@mui/icons-material/Download";
-import { Textbook } from "@/types/textbook";
+import { type Textbook } from "@/types/textbook";
 import {
 	getGradeDisplayName,
 	getTermDisplayName,
@@ -41,7 +42,7 @@ interface BookCardProps {
 	onShowDetail: (bookId: string) => void;
 }
 
-export default function BookCard({
+function BookCard({
 	book,
 	onDownload,
 	onShowDetail,
@@ -49,133 +50,133 @@ export default function BookCard({
 	const handleShowDetail = () => onShowDetail(book.uuid);
 
 	return (
-		<>
-			<Card
-				sx={{
-					height: "100%",
-					minWidth: 0,
-					display: "flex",
-					flexDirection: "column",
-					transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-					cursor: "pointer",
-					"&:hover": {
-						transform: "translateY(-4px)",
-						boxShadow: 6,
-					},
-				}}
-				onClick={handleShowDetail}
-			>
-				<Box sx={{ position: "relative" }}>
-					<LazyImage
-						src={getCoverUrls(book.uuid)}
-						alt={book.title}
-						height={360}
-						sx={{ borderRadius: "4px 4px 0 0", height: { xs: 240, sm: 360 } }}
+		<Card
+			sx={{
+				height: "100%",
+				minWidth: 0,
+				display: "flex",
+				flexDirection: "column",
+				transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+				cursor: "pointer",
+				"&:hover": {
+					transform: "translateY(-4px)",
+					boxShadow: 6,
+				},
+			}}
+			onClick={handleShowDetail}
+		>
+			<Box sx={{ position: "relative" }}>
+				<LazyImage
+					src={getCoverUrls(book.uuid)}
+					alt={book.title}
+					height={360}
+					sx={{ borderRadius: "4px 4px 0 0", height: { xs: 240, sm: 360 } }}
+				/>
+				{book.is_current_term === 1 && (
+					<Chip
+						label="当前学期"
+						color="primary"
+						size="small"
+						sx={{
+							position: "absolute",
+							top: 8,
+							right: 8,
+						}}
 					/>
-					{book.is_current_term === 1 && (
-						<Chip
-							label="当前学期"
-							color="primary"
-							size="small"
-							sx={{
-								position: "absolute",
-								top: 8,
-								right: 8,
-							}}
-						/>
-					)}
+				)}
+			</Box>
+
+			<CardContent
+				sx={{
+					flexGrow: 1,
+					p: { xs: 1.5, sm: 2 },
+					pb: 1,
+					overflowWrap: "anywhere",
+				}}
+			>
+				<Tooltip title={book.title} placement="top">
+					<Typography
+						variant="h6"
+						component="h2"
+						gutterBottom
+						sx={{
+							fontSize: "1rem",
+							fontWeight: 600,
+							lineHeight: 1.3,
+							display: "-webkit-box",
+							WebkitLineClamp: 2,
+							WebkitBoxOrient: "vertical",
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							minHeight: "2.6em",
+						}}
+					>
+						{book.title}
+					</Typography>
+				</Tooltip>
+
+				<Box sx={{ mb: 2, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+					<Chip
+						label={getGradeDisplayName(book.grade)}
+						size="small"
+						variant="outlined"
+						color="primary"
+					/>
+					<Chip
+						label={getTermDisplayName(book.term)}
+						size="small"
+						variant="outlined"
+						color="secondary"
+					/>
+					<Chip label={book.subject_str} size="small" variant="outlined" />
 				</Box>
 
-				<CardContent
-					sx={{
-						flexGrow: 1,
-						p: { xs: 1.5, sm: 2 },
-						pb: 1,
-						overflowWrap: "anywhere",
+				<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+					<strong>出版社:</strong>
+					{book.publisher ? getPublisherDisplayName(book.publisher) : "未知"}
+				</Typography>
+
+				<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+					<strong>用书类型:</strong> {getUseTypeDisplayName(book.use_type)}
+				</Typography>
+
+				<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+					<strong>使用年份:</strong> {book.use_year}
+				</Typography>
+
+				<Typography variant="body2" color="text.secondary">
+					<strong>ISBN:</strong> {book.isbn}
+				</Typography>
+			</CardContent>
+
+			<CardActions sx={{ pt: 0, justifyContent: "space-between", gap: 1 }}>
+				<Button
+					variant="outlined"
+					startIcon={<InfoIcon />}
+					onClick={(e) => {
+						e.stopPropagation();
+						handleShowDetail();
 					}}
+					size="small"
+					sx={{ flex: 1, minHeight: { xs: 44, sm: "auto" } }}
 				>
-					<Tooltip title={book.title} placement="top">
-						<Typography
-							variant="h6"
-							component="h2"
-							gutterBottom
-							sx={{
-								fontSize: "1rem",
-								fontWeight: 600,
-								lineHeight: 1.3,
-								display: "-webkit-box",
-								WebkitLineClamp: 2,
-								WebkitBoxOrient: "vertical",
-								overflow: "hidden",
-								textOverflow: "ellipsis",
-								minHeight: "2.6em",
-							}}
-						>
-							{book.title}
-						</Typography>
-					</Tooltip>
-
-					<Box sx={{ mb: 2, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-						<Chip
-							label={getGradeDisplayName(book.grade)}
-							size="small"
-							variant="outlined"
-							color="primary"
-						/>
-						<Chip
-							label={getTermDisplayName(book.term)}
-							size="small"
-							variant="outlined"
-							color="secondary"
-						/>
-						<Chip label={book.subject_str} size="small" variant="outlined" />
-					</Box>
-
-					<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-						<strong>出版社:</strong>
-						{book.publisher ? getPublisherDisplayName(book.publisher) : "未知"}
-					</Typography>
-
-					<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-						<strong>用书类型:</strong> {getUseTypeDisplayName(book.use_type)}
-					</Typography>
-
-					<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-						<strong>使用年份:</strong> {book.use_year}
-					</Typography>
-
-					<Typography variant="body2" color="text.secondary">
-						<strong>ISBN:</strong> {book.isbn}
-					</Typography>
-				</CardContent>
-
-				<CardActions sx={{ pt: 0, justifyContent: "space-between", gap: 1 }}>
-					<Button
-						variant="outlined"
-						startIcon={<InfoIcon />}
-						onClick={(e) => {
-							e.stopPropagation();
-							handleShowDetail();
-						}}
-						size="small"
-						sx={{ flex: 1, minHeight: { xs: 44, sm: "auto" } }}
-					>
-						详情
-					</Button>
-					<Button
-						variant="contained"
-						startIcon={<DownloadIcon />}
-						onClick={(e) => {
-							e.stopPropagation();
-							onDownload(book.uuid);
-						}}
-						size="small"
-						sx={{ flex: 1, minHeight: { xs: 44, sm: "auto" } }}
-					>
-						下载
-					</Button>
-				</CardActions>
-			</Card>
-		</>
+					详情
+				</Button>
+				<Button
+					variant="contained"
+					startIcon={<DownloadIcon />}
+					onClick={(e) => {
+						e.stopPropagation();
+						onDownload(book.uuid);
+					}}
+					size="small"
+					sx={{ flex: 1, minHeight: { xs: 44, sm: "auto" } }}
+				>
+					下载
+				</Button>
+			</CardActions>
+		</Card>
 	);
 }
+
+export default memo(BookCard);

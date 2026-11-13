@@ -15,11 +15,11 @@
 
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
-import { SxProps, Theme } from "@mui/material/styles";
+import { type SxProps, type Theme } from "@mui/material/styles";
 import Image from "next/image";
 
 interface LazyImageProps {
@@ -30,13 +30,16 @@ interface LazyImageProps {
 	sx?: SxProps<Theme>;
 }
 
-export default function LazyImage({
+function LazyImage({
 	src,
 	alt,
 	width = "100%",
 	height = 320,
 	sx = {},
 }: LazyImageProps) {
+	// A bare string and a candidate list behave identically from here on: indexing
+	// a plain string would yield characters rather than URLs.
+	const sources = Array.isArray(src) ? src : [src];
 	const [imageIndex, setImageIndex] = useState(0);
 	const [imageLoaded, setImageLoaded] = useState(false);
 	const [imageError, setImageError] = useState(false);
@@ -46,12 +49,14 @@ export default function LazyImage({
 		triggerOnce: true,
 	});
 
+	const currentSrc = sources[Math.min(imageIndex, sources.length - 1)] ?? "";
+
 	const handleImageLoad = () => {
 		setImageLoaded(true);
 	};
 
 	const handleImageError = () => {
-		if (Array.isArray(src) && imageIndex < src.length - 1) {
+		if (imageIndex < sources.length - 1) {
 			setImageIndex(imageIndex + 1);
 		} else {
 			setImageError(true);
@@ -81,7 +86,7 @@ export default function LazyImage({
 					height="100%"
 					animation="wave"
 				/>
-			) : imageError ? (
+			) : imageError || !currentSrc ? (
 				<Box
 					sx={{
 						display: "flex",
@@ -98,12 +103,11 @@ export default function LazyImage({
 			) : (
 				<>
 					<Image
-						src={src[imageIndex]}
+						src={currentSrc}
 						alt={alt}
 						fill
-						style={{
-							objectFit: "contain",
-						}}
+						style={{ objectFit: "contain" }}
+						sizes="(max-width: 900px) 50vw, 25vw"
 						onLoad={handleImageLoad}
 						onError={handleImageError}
 						unoptimized
@@ -122,3 +126,5 @@ export default function LazyImage({
 		</Box>
 	);
 }
+
+export default memo(LazyImage);

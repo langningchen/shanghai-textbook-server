@@ -15,6 +15,7 @@
 
 "use client";
 
+import { memo, type ReactNode } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -32,7 +33,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
-import { Textbook } from "@/types/textbook";
+import { type Textbook } from "@/types/textbook";
 import {
 	getGradeDisplayName,
 	getTermDisplayName,
@@ -80,7 +81,7 @@ function LinkItem({
 	label,
 	url,
 }: {
-	icon: React.ReactNode;
+	icon: ReactNode;
 	label: string;
 	url: string;
 }) {
@@ -118,7 +119,7 @@ function LinkItem({
 	);
 }
 
-export default function BookDetailDialog({
+function BookDetailDialog({
 	open,
 	onClose,
 	book,
@@ -346,7 +347,10 @@ export default function BookDetailDialog({
 									</Typography>
 									<Divider sx={{ mb: 2 }} />
 									{book.used_grade_semesters.map((gradeSemester, index) => (
-										<Box key={index} sx={{ mb: 2 }}>
+										<Box
+											key={`${gradeSemester.grade_level_code}-${index}`}
+											sx={{ mb: 2 }}
+										>
 											<Typography
 												variant="body1"
 												sx={{ fontWeight: 500, mb: 1 }}
@@ -511,3 +515,5 @@ export default function BookDetailDialog({
 		</Dialog>
 	);
 }
+
+export default memo(BookDetailDialog);

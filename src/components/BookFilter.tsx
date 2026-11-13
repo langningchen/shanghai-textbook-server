@@ -15,6 +15,7 @@
 
 "use client";
 
+import { memo, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -24,7 +25,7 @@ import Typography from "@mui/material/Typography";
 import Autocomplete from "@mui/material/Autocomplete";
 import FilterIcon from "@mui/icons-material/FilterList";
 import ClearIcon from "@mui/icons-material/Clear";
-import { FilterOptions, Textbook } from "@/types/textbook";
+import { type FilterOptions, type Textbook } from "@/types/textbook";
 import {
 	GRADE_OPTIONS,
 	TERM_OPTIONS,
@@ -40,13 +41,13 @@ interface BookFilterProps {
 	books: Textbook[];
 }
 
-export default function BookFilter({
+function BookFilter({
 	filters,
 	onFiltersChange,
 	onClearFilters,
 	books,
 }: BookFilterProps) {
-	const uniqueSubjects = getUniqueSubjects(books);
+	const uniqueSubjects = useMemo(() => getUniqueSubjects(books), [books]);
 	const hasActiveFilters = Object.values(filters).some((value) => value);
 
 	return (
@@ -219,3 +220,5 @@ export default function BookFilter({
 		</Card>
 	);
 }
+
+export default memo(BookFilter);

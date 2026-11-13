@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Textbook, FilterOptions } from "@/types/textbook";
+import type { Textbook, FilterOptions } from "@/types/textbook";
 import {
 	GRADE_MAPPINGS,
 	TERM_MAPPINGS,
@@ -115,4 +115,19 @@ export function generateFriendlyFilename(book: Textbook): string {
 	}
 
 	return `${filename}.pdf`;
+}
+
+export function formatBytes(bytes: number): string {
+	if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+	const units = ["B", "KB", "MB", "GB"];
+	const exponent = Math.min(
+		units.length - 1,
+		Math.floor(Math.log(bytes) / Math.log(1024)),
+	);
+	const value = bytes / 1024 ** exponent;
+	return `${value >= 10 || exponent === 0 ? Math.round(value) : value.toFixed(1)} ${units[exponent]}`;
+}
+
+export function formatSpeed(bytesPerSecond: number): string {
+	return `${formatBytes(bytesPerSecond)}/s`;
 }

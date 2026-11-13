@@ -21,6 +21,7 @@
 		"@mui/material": "^9.5.0",
 		"@mui/x-data-grid": "9.17.0",
 		"@opennextjs/cloudflare": "^1.20.15",
+		"@tanstack/react-virtual": "^3.14.26",
 		"next": "16.4.3",
 		"react": "19.3.1",
 		"react-dom": "19.3.1",

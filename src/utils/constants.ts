@@ -102,3 +102,11 @@ export const USE_TYPE_OPTIONS = Object.entries(USE_TYPE_MAPPINGS).map(
 		label,
 	}),
 );
+
+// Tips shown while a download is running and no download-queue hint applies.
+export const DOWNLOAD_TIPS = [
+	"下载卡住时先换源：切换数据源后未完成的分片会自动接着下，不用从头开始",
+	"列表模式下勾选多本教材，可以用「批量下载」一次下载整个学期",
+	"下载的 PDF 会直接保存到浏览器下载目录，文件名已按教材信息命名",
+	"封面或详情加载缓慢不代表下载缓慢，可以先看看测速结果再换源",
+];
