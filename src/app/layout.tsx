@@ -13,6 +13,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import "./globals.css";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
@@ -41,7 +43,13 @@ export default function RootLayout({
 			<head>
 				<link rel="icon" href="/icon.svg" type="image/svg+xml" />
 			</head>
-			<body className={`${geistSans.variable} ${geistMono.variable}`}>
+			<body
+				className={`${geistSans.variable} ${geistMono.variable}`}
+				style={{
+					fontFamily:
+						"var(--font-geist-sans), Arial, Helvetica, sans-serif",
+				}}
+			>
 				{children}
 			</body>
 		</html>

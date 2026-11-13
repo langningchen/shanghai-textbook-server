@@ -764,6 +764,10 @@ const downloadPart = async (context: PartContext) => {
 							maybeSplit();
 						}
 						if (segment.cancelled) throw new CollapsedError();
+						if (skip > 0)
+							throw new TerminalDownloadError(
+								"下载失败，数据源返回内容过短，请尝试换源",
+							);
 						if (
 							segment.end !== Number.POSITIVE_INFINITY &&
 							position < segment.end
@@ -867,9 +871,9 @@ export async function downloadBook({
 	onProgress,
 	onCheckpoint,
 }: DownloadBookOptions): Promise<void> {
-	// A new download invalidates any pending deletion for the same book.
-	const generation = (completedGenerations.get(book.uuid) ?? 0) + 1;
-	completedGenerations.set(book.uuid, generation);
+	// A new attempt cancels the previous completion's pending deletion; the
+	// generation only moves forward once this attempt actually completes, so a
+	// failed retry cannot invalidate the previous run's cleanup.
 	const pendingDelete = deleteTimers.get(book.uuid);
 	if (pendingDelete !== undefined) {
 		clearTimeout(pendingDelete);
@@ -1017,6 +1021,8 @@ export async function downloadBook({
 	const blob = new Blob(blobParts, { type: "application/pdf" });
 	await saveDownload(blob, generateFriendlyFilename(book));
 	publish(true);
+	const generation = (completedGenerations.get(book.uuid) ?? 0) + 1;
+	completedGenerations.set(book.uuid, generation);
 	const timer = setTimeout(() => {
 		deleteTimers.delete(book.uuid);
 		// Only the newest completed download of this uuid may clear the store;

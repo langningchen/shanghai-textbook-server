@@ -76,6 +76,26 @@ const getTextbookMaterialTypeDisplay = (type: string) => {
 	return typeMap[type] || type;
 };
 
+// Remote metadata is untrusted: file_path/cover_path arrive in the index
+// JSON, so only http(s) URLs may become links. Anything else renders as
+// plain text instead of an <a>, which also neutralises javascript:/data:
+// injections from a malicious mirror.
+const safeHref = (url: string) => {
+	try {
+		// The dialog may render during SSR, so never touch window unguarded.
+		const base =
+			typeof window === "undefined"
+			? "https://example.invalid/"
+			: window.location.href;
+		const parsed = new URL(url, base);
+		return parsed.protocol === "http:" || parsed.protocol === "https:"
+			? parsed.href
+			: null;
+	} catch {
+		return null;
+	}
+};
+
 function LinkItem({
 	icon,
 	label,
@@ -85,6 +105,9 @@ function LinkItem({
 	label: string;
 	url: string;
 }) {
+	// One evaluation: the const keeps TypeScript's narrowing valid so the
+	// same href value is passed to the link and the branch test.
+	const href = safeHref(url);
 	return (
 		<Box
 			sx={{
@@ -98,23 +121,39 @@ function LinkItem({
 			<Typography variant="body2" sx={{ mr: 1 }}>
 				<strong>{label}：</strong>
 			</Typography>
-			<MuiLink
-				href={url}
-				target="_blank"
-				rel="noopener noreferrer"
-				sx={{
-					display: "flex",
-					alignItems: "center",
-					gap: 0.5,
-					wordBreak: "break-all",
-					flex: 1,
-					minWidth: 0,
-					flexBasis: { xs: "100%", sm: "auto" },
-				}}
-			>
-				{url}
-				<OpenInNewIcon fontSize="small" />
-			</MuiLink>
+			{href ? (
+				<MuiLink
+					href={href}
+					target="_blank"
+					rel="noopener noreferrer"
+					sx={{
+						display: "flex",
+						alignItems: "center",
+						gap: 0.5,
+						wordBreak: "break-all",
+						flex: 1,
+						minWidth: 0,
+						flexBasis: { xs: "100%", sm: "auto" },
+					}}
+				>
+					{url}
+					<OpenInNewIcon fontSize="small" />
+				</MuiLink>
+			) : (
+				// Not a safe link: show the value as inert text so the row still
+				// communicates what the mirror sent without exposing a link.
+				<Typography
+					variant="body2"
+					sx={{
+						wordBreak: "break-all",
+						flex: 1,
+						minWidth: 0,
+						flexBasis: { xs: "100%", sm: "auto" },
+					}}
+				>
+					{url}
+				</Typography>
+			)}
 		</Box>
 	);
 }

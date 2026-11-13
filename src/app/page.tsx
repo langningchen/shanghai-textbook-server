@@ -78,7 +78,10 @@ import {
 	type DownloadTask,
 	type PartInfo,
 } from "@/utils/downloader";
-import { deleteChunks } from "@/utils/downloadStore";
+import {
+	collectOrphanChunks,
+	deleteChunks,
+} from "@/utils/downloadStore";
 
 async function loadBooks(signal?: AbortSignal): Promise<Textbook[]> {
 	const response = await fetch(getIndexUrl(), { signal });
@@ -252,6 +255,9 @@ export default function HomePage() {
 			concurrencyRef.current = storedConcurrency;
 			setConcurrency(storedConcurrency);
 			setQueueReady(true);
+			// Completed books keep their chunks for retries; anything no longer
+			// queued (crashed tab, trimmed entry) is garbage.
+			void collectOrphanChunks(stored.map((item) => item.uuid));
 		}, 0);
 		return () => clearTimeout(timer);
 	}, []);
@@ -727,7 +733,16 @@ export default function HomePage() {
 					return [...items, createQueueItem(book)];
 				return items.map((item) =>
 					item.uuid === bookId && item.status === "failed"
-						? { ...item, status: "pending" as const, error: undefined }
+						? {
+							...item,
+							status: "pending" as const,
+							error: undefined,
+							// Same reset as retryQueueItem: upstream files can change, so
+							// drop the remembered part list and re-probe sizes.
+							parts: [],
+							receivedBytes: 0,
+							totalBytes: 0,
+						}
 						: item,
 				);
 			});

@@ -151,14 +151,9 @@ export async function readChunks(uuid: string): Promise<StoredChunk[]> {
 export async function deleteChunks(uuid: string): Promise<void> {
 	for (const [key, chunk] of memory) if (chunk.uuid === uuid) memory.delete(key);
 	try {
-		const keys = await runRequest<IDBValidKey[]>("readonly", (store) =>
-			store.getAllKeys(keyRange(uuid)),
-		);
-		if (!keys || keys.length === 0) return;
-		await runRequest("readwrite", (store) => {
-			keys.forEach((key) => store.delete(key));
-			return store.count();
-		});
+		// One atomic range delete: no read-then-delete gap and no per-key
+		// transactions (the range covers every `${uuid}:...` key).
+		await runRequest("readwrite", (store) => store.delete(keyRange(uuid)));
 	} catch {
 		// Memory entries are already cleared; nothing else to do.
 	}
@@ -193,4 +188,51 @@ export async function deleteChunksAfter(
 	} catch {
 		// Memory entries are gone; later linear writes replace the IDB copies.
 	}
+}
+
+// Hydration-time sweep: removes every chunk whose book is no longer in the
+// active set (queue ∪ in-flight), so completed downloads that were never
+// cleaned up (page closed before the 60s timer fired) do not live in IDB
+// forever. Returns the uuids whose chunks were removed.
+export async function collectOrphanChunks(
+	activeUuids: string[],
+): Promise<string[]> {
+	const active = new Set(activeUuids);
+	const orphans = new Map<string, string[]>();
+	for (const [key, chunk] of memory) {
+		if (active.has(chunk.uuid)) continue;
+		const list = orphans.get(chunk.uuid) ?? [];
+		list.push(key);
+		orphans.set(chunk.uuid, list);
+	}
+	try {
+		const keys = await runRequest<IDBValidKey[]>("readonly", (store) =>
+			store.getAllKeys(),
+		);
+		if (keys) {
+			for (const key of keys) {
+				const uuid = String(key).split(":")[0];
+				if (active.has(uuid)) continue;
+				const list = orphans.get(uuid) ?? [];
+				list.push(String(key));
+				orphans.set(uuid, list);
+			}
+		}
+	} catch {
+		// Memory-only orphan sweep below still applies.
+	}
+	if (orphans.size === 0) return [];
+	const removed = [...orphans.keys()];
+	try {
+		// Single readwrite transaction: drop each orphan book by key range.
+		await runRequest("readwrite", (store) => {
+			for (const uuid of removed) store.delete(keyRange(uuid));
+			return store.count();
+		});
+		for (const list of orphans.values())
+			for (const key of list) memory.delete(key);
+	} catch {
+		// Leave everything in place; the caller can sweep again on next load.
+	}
+	return removed;
 }

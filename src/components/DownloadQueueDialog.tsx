@@ -482,7 +482,7 @@ export default function DownloadQueueDialog({
 										>
 											{item.title}
 										</Typography>
-										<Box sx={{ flex: "1 1 auto", minWidth: { xs: 64, sm: 96 } }}>
+										<Box sx={{ flex: "1 1 auto", minWidth: { xs: 64, md: 96 } }}>
 											<DownloadPartBars
 												parts={row.parts}
 												height={8}
@@ -500,10 +500,10 @@ export default function DownloadQueueDialog({
 												flexShrink: 0,
 												whiteSpace: "nowrap",
 												color: toneColor[row.tone],
-												// The status column needs 150px, so it only returns from md upwards: at
-												// 600-790px (sm) the row budget (title 280 + bars 96 + actions 52 + gaps)
-												// still cannot hold it without clipping the action buttons. The per-row
-												// bar keeps showing progress while the column is hidden.
+												// The status column needs 150px and only returns from md upwards: at
+												// 600-899px (sm) the row cannot hold title 280 + bars 96 + status 150 +
+												// actions without clipping the buttons. The per-row bar keeps showing
+												// progress while the column is hidden.
 												display: { xs: "none", md: "block" },
 											}}
 										>
