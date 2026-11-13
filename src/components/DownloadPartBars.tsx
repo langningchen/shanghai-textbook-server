@@ -155,10 +155,6 @@ function DownloadPartBars({
 		}
 	}, [parts, failed, fetching, height, theme, width]);
 
-	if (parts.length === 0 && !fetching)
-		return (
-			<Box sx={{ height, borderRadius: 1, backgroundColor: "action.hover" }} />
-		);
 
 	return (
 		<Box sx={{ width: "100%", height, minWidth: 0 }}>
