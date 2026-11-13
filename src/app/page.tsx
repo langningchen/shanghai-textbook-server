@@ -1063,7 +1063,7 @@ export default function HomePage() {
 						)}
 					</Typography>
 
-					{/* 换源按钮 */}
+					{/* source switch button */}
 					<Tooltip title="切换数据源">
 						<Button
 							color="inherit"
@@ -1086,7 +1086,7 @@ export default function HomePage() {
 						</Button>
 					</Tooltip>
 
-					{/* GitHub 仓库菜单 */}
+					{/* GitHub repository menu */}
 					<IconButton
 						color="inherit"
 						onClick={handleMenuClick}

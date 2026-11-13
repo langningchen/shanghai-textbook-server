@@ -220,7 +220,7 @@ function BookDetailDialog({
 					</Box>
 				) : book ? (
 					<Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-						{/* 书籍封面和基本信息 */}
+						{/* cover and basic information */}
 						<Box
 							sx={{
 								display: "flex",
@@ -229,7 +229,7 @@ function BookDetailDialog({
 								alignItems: "stretch",
 							}}
 						>
-							{/* 封面 */}
+							{/* cover */}
 							<Box sx={{ flex: "0 0 auto", textAlign: "center" }}>
 								<Paper
 									sx={{
@@ -268,7 +268,7 @@ function BookDetailDialog({
 								</Paper>
 							</Box>
 
-							{/* 基本信息 */}
+							{/* basic information */}
 							<Box sx={{ flex: 1, minWidth: 0 }}>
 								<Paper
 									sx={{
@@ -373,7 +373,7 @@ function BookDetailDialog({
 							</Box>
 						</Box>
 
-						{/* 使用年级学期 */}
+						{/* grade and semester */}
 						{book.used_grade_semesters &&
 							book.used_grade_semesters.length > 0 && (
 								<Paper sx={{ p: 2 }}>
@@ -415,7 +415,7 @@ function BookDetailDialog({
 								</Paper>
 							)}
 
-						{/* 技术信息 */}
+						{/* technical information */}
 						<Paper sx={{ p: 2 }}>
 							<Typography
 								variant="h6"
@@ -490,7 +490,7 @@ function BookDetailDialog({
 							</Box>
 						</Paper>
 
-						{/* 文件链接 */}
+						{/* file links */}
 						<Paper sx={{ p: 2 }}>
 							<Typography
 								variant="h6"
